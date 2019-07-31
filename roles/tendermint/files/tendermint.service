@@ -1,0 +1,18 @@
+[Unit]
+Description=tendermint
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Restart=on-failure
+User=tendermint
+Group=tendermint
+PermissionsStartOnly=true
+ExecStart=/usr/bin/tendermint node
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGTERM
+LimitNOFILE=infinity
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target

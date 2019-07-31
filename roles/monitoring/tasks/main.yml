@@ -1,0 +1,52 @@
+---
+
+- name: Download InfluxDB
+  get_url:
+    url: https://dl.influxdata.com/influxdb/releases/influxdb-1.7.6.x86_64.rpm
+    checksum: sha256:ffcf0def4a0bffb74728c7aaa0ade39231ea4e91b3be67de5528d7982b295ea8
+    dest: /tmp/influxdb.rpm
+
+- name: Install InfluxDB
+  yum:
+    name: /tmp/influxdb.rpm
+    lock_timeout: 180
+
+
+- name: Download Telegraf
+  get_url:
+    url: https://dl.influxdata.com/telegraf/releases/telegraf-1.10.4-1.x86_64.rpm
+    checksum: sha256:758eb6857665019a7cb7c678c2684b9268fd448ec6c439e84d1f823aeecf676a
+    dest: /tmp/telegraf.rpm
+
+- name: Install Telegraf
+  yum:
+    name: /tmp/telegraf.rpm
+    lock_timeout: 180
+
+
+- name: Download Grafana
+  get_url:
+    url: https://dl.grafana.com/oss/release/grafana-6.1.6-1.x86_64.rpm
+    checksum: sha256:125cea2958d9fe8db69c96f92bb0f7cb1ace1e5b09023f69608d86160d165c3e
+    dest: /tmp/grafana.rpm
+
+- name: Install Grafana
+  yum:
+    name: /tmp/grafana.rpm
+    lock_timeout: 180
+
+# keep the / at the end of dest so the folder is created
+- name: Copy permission override for grafana for privileged ports
+  copy: src=override.conf dest=/etc/systemd/system/grafana-server.service.d/
+  notify: daemon reload
+
+# keep the / at the end of dest so the folder is created
+- name: Copy nightking-status dashboard
+  copy: src=nightking-status.json dest=/var/lib/grafana/dashboards/
+
+- name: Remove install packages
+  file: "path={{item}} state=absent"
+  with_items:
+    - /tmp/influxdb.rpm
+    - /tmp/telegraf.rpm
+    - /tmp/grafana.rpm

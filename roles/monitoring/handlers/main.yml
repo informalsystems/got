@@ -1,0 +1,13 @@
+---
+
+- name: enable telegraf
+  systemd: name=telegraf enabled=yes daemon_reload=yes
+
+- name: enable influxdb
+  systemd: name=influxdb enabled=yes daemon_reload=yes
+
+- name: enable grafana
+  systemd: name=grafana-server enabled=yes daemon_reload=yes
+
+- name: daemon reload
+  systemd: daemon_reload=yes

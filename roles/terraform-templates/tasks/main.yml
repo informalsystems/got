@@ -1,0 +1,4 @@
+---
+
+- name: Copy Terraform pre-generated template files
+  copy: src=. dest=/usr/share/terraform-templates

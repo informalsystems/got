@@ -1,0 +1,19 @@
+---
+
+- hosts: all
+  any_errors_fatal: true
+  gather_facts: no
+  become: yes
+  become_user: root
+  roles:
+    - yum
+    - { role: debug, when: DEBUG is defined and (DEBUG | bool) }
+    - journald
+    - openfiles
+    - terraform
+    - terraform-templates
+    - tendermint
+    - tm-load-test
+    - monitoring
+    - experiments
+    - scripts

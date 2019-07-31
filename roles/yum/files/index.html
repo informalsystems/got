@@ -1,0 +1,62 @@
+<html lang="en">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interchain Foundation - Game of Tendermint Nightking node</title>
+<style>
+	.container {
+		font-size: 1.6em;
+		line-height: 1.4;
+		margin: 3.5em auto;
+		max-width: 45em;
+		padding: 0 1.5em;
+	}
+	body {
+		font: 62.5% Arial, sans-serif;
+	}
+	code {
+		background-color: #F0F8FF;
+	}
+	.highlight {
+		border: 1px solid #005cb9;
+		background-color: #f1f5f9;
+		overflow: auto;
+		margin-bottom: 1.7em;
+		padding: 1em !important;
+		overflow-y: hidden;
+	}
+</style>
+
+<div class="container">
+	<h1>
+		Interchain Foundation
+	</h1>
+	<h2>
+		Game of Tendermint - Nightking node
+	</h2>
+	<h3>Nightking CA Certificate link</h3>
+	<p>
+		Click <a href="nightkingca.crt">this link</a> for the Nightking CA certificate. Install it using one of the below methods and rewrite the URL of the website to HTTPS afterwards to get access to the Grafana web server.
+	</p>
+	<h3>Mozilla Firefox</h3>
+	<p>
+		Firefox will automatically ask you if you want to trust the new Certificate Authority. Check the box next to "Trust this CA to identify websites" and click OK.
+	</p>
+	<h3>Google Chrome / Safari / other</h3>
+	<p>
+		Double-click on the downloaded certificate and the OS will ask you to install the certificate to the trusted root store. (Tested on Mac.)
+	<h3>Apple OSX Console</h3>
+	<p>
+		You can install the certificate programmatically. This affects browsers that use the operating system keychain, like Safari. Open the console and run:
+	</p>
+	<p class="highlight">
+		<code>
+			cd Downloads
+		</code>
+	</p>
+	<p class="highlight">
+		<code>
+			sudo security add-trusted-cert -d -r trustRoot -k "/Library/Keychains/System.keychain" "nightkingca.crt"
+		</code>
+	</p>
+
+</div>
+</html>

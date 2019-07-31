@@ -1,0 +1,24 @@
+# Experiment configuration
+# This file describes common elements of the experiment infrastructure
+# Optionally you can define custom elements by adding Terraform scripts under the `terraform` folder.
+
+# Todo: implement seed/config.diff (needs separate tendermint testnet command)
+
+##
+# Experiment details
+##
+
+# Number of Starks (Tendermint nodes)
+starks = 5
+starks_zones = ["us-east-1a","us-east-1a","us-east-1a","us-east-1a","us-east-1a"]
+
+# Number of Whitewalkers (tm-load-test nodes)
+whitewalkers=1
+whitewalkers_zones = ["us-east-1a"]
+
+##
+# Infrastructure default variables
+##
+
+# AWS EC2 instance type for Whitewalker and Stark nodes
+instance_type = "t2.micro"

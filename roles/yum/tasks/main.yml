@@ -1,0 +1,46 @@
+---
+
+# Adding all packages here, because installing yum-cron might trigger an update and running another yum process in parallel would fail.
+
+# Amazon Linux
+#- name: Install EPEL
+#  yum: name=epel-release state=present
+
+- name: Get stemplate
+  get_url:
+    url: https://github.com/freshautomations/stemplate/releases/download/v0.6.1/stemplate_linux_amd64
+    dest: /usr/bin/stemplate
+    checksum: sha256:6cdb9e58fea94852e0ad940933850902c5269e3a3ba27943ebfd3fe21f73da9c
+    mode: 0755
+
+- name: Get stoml
+  get_url:
+    url: https://github.com/freshautomations/stoml/releases/download/v0.3.0/stoml_linux_amd64
+    dest: /usr/bin/stoml
+    checksum: sha256:1d2996df7fc3a51a9c39055f9d1d180eb23f7f7a55f3424d5697ffc7a856f5a3
+    mode: 0755
+
+- name: Update to latest packages
+  yum: "name='*' state=latest lock_timeout=180"
+
+- name: Install yum-cron and jq
+  yum:
+    name:
+    - jq
+    - yum-cron
+    - ntp
+    state: latest
+    lock_timeout: 180
+  notify: enable ntp
+
+- name: Install nginx on Amazon Linux
+  command: "amazon-linux-extras install -y nginx1.12"
+  args:
+    creates: /usr/lib/systemd/system/nginx.service
+  notify: enable nginx
+
+- name: Copy yum-cron config
+  copy: src=yum-cron.conf dest=/etc/yum/yum-cron.conf
+
+- name: Copy nginx index.html
+  copy: src=index.html dest=/usr/share/nginx/html/index.html

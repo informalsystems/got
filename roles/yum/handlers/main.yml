@@ -1,0 +1,7 @@
+---
+
+- name: enable ntp
+  systemd: name=ntpd enabled=yes
+
+- name: enable nginx
+  systemd: name=nginx enabled=yes

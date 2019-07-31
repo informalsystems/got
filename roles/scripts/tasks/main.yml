@@ -1,0 +1,13 @@
+---
+
+- name: Copy experiments scripts
+  copy: "src=../../../experiments/ dest=/etc/experiments/"
+
+- name: Copy startup scripts
+  copy: "src=. dest=/usr/local/sbin mode=0755"
+
+- name: Create log folder
+  file: path=/var/log/nightking state=directory
+
+- name: Enable startup script at startup
+  cron: name=startupjob job=/usr/local/sbin/startup.bash special_time=reboot

@@ -1,0 +1,47 @@
+{
+  "variables": {
+    "debug": "{{env `DEBUG`}}"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "region": "us-east-1",
+      "source_ami": "ami-0de53d8956e8dcf80",
+      "instance_type": "t3.medium",
+      "ssh_username": "ec2-user",
+      "ami_name": "Interchain Nightking image {{ timestamp }}",
+      "force_deregister": "true",
+      "force_delete_snapshot": "true",
+      "launch_block_device_mappings": [{
+        "device_name": "/dev/xvda",
+        "volume_size": 8,
+        "volume_type": "gp2",
+        "delete_on_termination": true
+      }],
+      "ami_description": "Interchain Nightking image {{ timestamp }}",
+      "ami_groups": ["all"],
+      "tags": {
+        "OS": "Interchain Amazon Linux",
+        "Previous_OS": "{{ .SourceAMIName }}",
+        "Previous_Tags": "{{ .SourceAMITags.TagName }}"
+      },
+      "run_tags": {
+        "Name": "nightking-packer"
+      },
+      "associate_public_ip_address": true,
+      "disable_stop_instance": false
+    }
+  ],
+
+  "provisioners": [
+    {
+      "type": "ansible",
+      "playbook_file": "setup.yml",
+      "sftp_command": "/usr/libexec/openssh/sftp-server -e",
+      "extra_arguments": [
+        "--extra-vars",
+        "DEBUG={{user `debug`}}"
+      ]
+    }
+  ]
+}

@@ -23,6 +23,10 @@
     name: /tmp/telegraf.rpm
     lock_timeout: 180
 
+# keep the / at the end of dest so the folder is created
+- name: Copy prometheus input config
+  copy: src=prometheus.conf dest=/etc/telegraf/telegraf.d/
+
 
 - name: Download Grafana
   get_url:
@@ -43,6 +47,10 @@
 # keep the / at the end of dest so the folder is created
 - name: Copy nightking-status dashboard
   copy: src=nightking-status.json dest=/var/lib/grafana/dashboards/
+
+# keep the / at the end of dest so the folder is created
+- name: Copy experiment-status dashboard
+  copy: src=experiment-status.json dest=/var/lib/grafana/dashboards/
 
 - name: Remove install packages
   file: "path={{item}} state=absent"

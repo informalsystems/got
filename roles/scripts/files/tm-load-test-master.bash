@@ -21,7 +21,7 @@ tm-load-test \
     --peer-connect-timeout {{ .tm_load_test.peer_connect_timeout }} \
     -v \
     master \
-    --bind "{{ .tm_load_test.master_bind }}" \
+    --bind "0.0.0.0:26670" \
     --expect-slaves {{ .tm_load_test.master_expect_slaves }} \
     --connect-timeout {{ .tm_load_test.master_slave_connect_timeout }} \
     --shutdown-wait {{ .tm_load_test.master_shutdown_wait }}

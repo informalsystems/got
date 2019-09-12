@@ -100,10 +100,6 @@ min_peer_connectivity = "{{ .starks }} - 1"
 # establish the minimum amount of peer connectivity.
 peer_connect_timeout = 1800
 
-# The address to which to bind the tm-load-test master. Make sure it's 
-# externally accessible so that the slaves can reach it.
-master_bind = "0.0.0.0:26670"
-
 # How many seconds to make the tm-load-test master wait once load testing
 # has completed before terminating - allows Telegraf to poll it for final 
 # metrics/results

@@ -9,4 +9,4 @@ tm-load-test \
     slave \
     --connect-timeout {{ .tm_load_test.slave_master_connect_timeout }} \
     --master "ws://${NIGHTKING_IP}:26670" \
-    --id "${WHITEWALKER_ID}"
+    --id "whitewalker${ID}"

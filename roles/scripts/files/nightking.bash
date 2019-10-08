@@ -68,15 +68,25 @@ do
 
     # Set up and run tm-load-test master - wait until it finishes
     if [ -f /etc/experiments/"${XP}"/config.toml ]; then
-      stemplate /etc/experiments/"${XP}"/load-test.toml --env -f /etc/experiments/"${XP}"/config.toml -o /home/tm-load-test
+      # We run stemplate twice to allow for double variable interpolation - 
+      # allows us to refer to variables from within the `config.toml` file too
+      stemplate /usr/local/sbin/tm-load-test-master.bash --env -f /etc/experiments/"${XP}"/config.toml -o /tmp
+      stemplate /tmp/tm-load-test-master.bash --env -f /etc/experiments/"${XP}"/config.toml -o /home/tm-load-test
     else
-      stemplate /etc/experiments/"${XP}"/load-test.toml -o /home/tm-load-test --env
+      stemplate /usr/local/sbin/tm-load-test-master.bash --env -o /tmp
+      stemplate /tmp/tm-load-test-master.bash --env -o /home/tm-load-test
     fi
-    chown tm-load-test /home/tm-load-test/load-test.toml
+    chown tm-load-test /home/tm-load-test/tm-load-test-master.bash
+    chmod +x /home/tm-load-test/tm-load-test-master.bash
+
     trap 'log tm-load-test 2' ERR
     log tm-load-test 1
     export LOAD_TEST_RESULT=0
-    sudo -u tm-load-test tm-load-test -master -c /home/tm-load-test/load-test.toml || export LOAD_TEST_RESULT=$?
+
+    # Execute the tm-load-test master
+    sudo -u tm-load-test \
+      /home/tm-load-test/tm-load-test-master.bash || export LOAD_TEST_RESULT=$?
+
     if [ "${LOAD_TEST_RESULT}" -ne 0 ]; then
       log tm-load-test 2
     else

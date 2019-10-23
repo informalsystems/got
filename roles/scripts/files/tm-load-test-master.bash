@@ -15,7 +15,7 @@ tm-load-test \
     -T {{ .tm_load_test.time }} \
     --endpoint-select-method {{ .tm_load_test.endpoint_select_method }} \
     --endpoints "{{ .tm_load_test.endpoints }}" \
-    --expect_peers {{ .tm_load_test.expect_peers }} \
+    --expect-peers {{ .tm_load_test.expect_peers }} \
     --max-endpoints {{ .tm_load_test.max_endpoints }} \
     --min-peer-connectivity $(expr {{ .tm_load_test.min_peer_connectivity  }}) \
     --peer-connect-timeout {{ .tm_load_test.peer_connect_timeout }} \

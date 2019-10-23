@@ -13,6 +13,11 @@ variable "instance_type" {
   type = "string"
 }
 
+variable "ssh_key" {
+  description = "SSH public key to use"
+  type = "string"
+}
+
 variable "role" {
   description = "GoT role for the server: stark/whitewalker"
   type = "string"

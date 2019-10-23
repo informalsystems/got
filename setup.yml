@@ -13,7 +13,8 @@
     - terraform
     - terraform-templates
     - tendermint
-    - tm-load-test
     - monitoring
     - experiments
     - scripts
+    #tm-load-test now depends on the scripts role, because scripts introduces a group that tm-load-test need to be part of.
+    - tm-load-test

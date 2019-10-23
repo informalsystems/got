@@ -9,6 +9,22 @@ resource "aws_security_group" "server" {
   }
 
   ingress {
+    from_port = 26657
+    protocol = "tcp"
+    to_port = 26657
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Tendermint RPC port"
+  }
+
+  ingress {
+    from_port = 26660
+    protocol = "tcp"
+    to_port = 26660
+    cidr_blocks = ["${var.nightking_public_ip}/32", "${var.nightking_private_ip}/32"]
+    description = "Tendermint Prometheus port"
+  }
+
+  ingress {
     from_port = 22
     protocol = "tcp"
     to_port = 22

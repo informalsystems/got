@@ -8,7 +8,7 @@ source /usr/local/sbin/library.bash
 
 # Disable example influxdb setup in main config
 sed -i 's/^\(\s\|#\)*\[\[outputs\.influxdb\]\].*$/#[[outputs.influxdb]]/' /etc/telegraf/telegraf.conf
-# Todo: Change the global hostname instead of fixing the telegraf agent config
+# Todo: Low priority cleanup: Change the global hostname instead of fixing the telegraf agent config
 sed -i 's/^\(\s\|#\)*hostname\s*=.*$/  hostname = "'"${ROLE}${ID}"'"/' /etc/telegraf/telegraf.conf
 
 # Add real influx connection

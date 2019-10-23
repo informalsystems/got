@@ -23,5 +23,6 @@ resource aws_instance server {
     nightking-private-ip = "${var.nightking_private_ip}"
     telegraf = "${var.telegraf}"
     nightking-seed-node-id = "${var.nightking_seed_node_id}"
+    experiments = "${var.experiments}"
   }
 }

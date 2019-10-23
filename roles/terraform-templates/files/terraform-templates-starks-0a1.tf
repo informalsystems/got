@@ -6,6 +6,7 @@ module stark{{.}} {
   ami_owner = "{{ $.AMI_OWNER }}"
   ami_name = "{{ $.AMI_NAME }}"
   instance_type = "{{ $.instance_type }}"
+  ssh_key = "{{ $.SSH_KEY }}"
   role = "stark"
   id = "{{ . }}"
   nightking_hostname = "{{ $.NIGHTKING_HOSTNAME }}"

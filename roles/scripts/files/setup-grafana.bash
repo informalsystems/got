@@ -55,7 +55,7 @@ sleep 3
 
 # Set Home page
 set +e # Debug
-NIGHTKING_ID="$(curl -s -H "Content-Type: application/json" "https://admin:admin@${PUBLIC_HOSTNAME}/api/search?folderIds=0&query=Nightking%20status" | jq .[0].id)"
+NIGHTKING_ID="$(curl -s -H "Content-Type: application/json" "https://admin:admin@${PUBLIC_HOSTNAME}/api/search?folderIds=0&query=Experiment%20monitor" | jq .[0].id)"
 curl -X PUT -s -H "Content-Type: application/json" "https://admin:admin@${PUBLIC_HOSTNAME}/api/user/preferences" -d "{\"homeDashboardId\":${NIGHTKING_ID}}"
 
 touch /var/log/nightking/.grafana-setup-finished

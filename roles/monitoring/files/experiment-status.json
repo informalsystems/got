@@ -12,10 +12,10 @@
       }
     ]
   },
-  "editable": true,
+  "description": "Current status of experiment execution",
+  "editable": false,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 1,
   "links": [],
   "panels": [
     {
@@ -1604,7 +1604,7 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {
@@ -1632,8 +1632,8 @@
       "30d"
     ]
   },
-  "timezone": "",
-  "title": "Default",
+  "timezone": "browser",
+  "title": "Experiment monitor",
   "uid": "B8atRmvWk",
   "version": 1
 }

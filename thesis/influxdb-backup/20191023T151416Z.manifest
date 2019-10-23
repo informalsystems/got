@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "fileName": "20191023T151416Z.meta",
+    "size": 340
+  },
+  "limited": false,
+  "files": [
+    {
+      "database": "_internal",
+      "policy": "monitor",
+      "shardID": 1,
+      "fileName": "20191023T151416Z.s1.tar.gz",
+      "size": 126976,
+      "lastModified": 0
+    },
+    {
+      "database": "telegraf",
+      "policy": "autogen",
+      "shardID": 2,
+      "fileName": "20191023T151416Z.s2.tar.gz",
+      "size": 3720704,
+      "lastModified": 0
+    }
+  ]
+}

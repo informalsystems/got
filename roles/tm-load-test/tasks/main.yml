@@ -1,7 +1,7 @@
 ---
 
 - name: Create tm-load-test users
-  user: name=tm-load-test
+  user: name=tm-load-test groups=loggers append=yes
 
 - name: Install tm-load-test binary
   get_url:

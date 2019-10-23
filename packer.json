@@ -27,7 +27,7 @@
       "ami_description": "Interchain Nightking image {{ timestamp }}",
       "ami_groups": ["all"],
       "tags": {
-        "OS": "Interchain Amazon Linux",
+        "OS": "Interchain Nightking Amazon Linux",
         "Previous_OS": "{{ .SourceAMIName }}",
         "Previous_Tags": "{{ .SourceAMITags.TagName }}"
       },

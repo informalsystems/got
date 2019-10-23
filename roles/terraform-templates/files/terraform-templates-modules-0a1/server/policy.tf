@@ -1,4 +1,3 @@
-// Todo: Restrict stark/whitewalker server AWS access
 data "aws_iam_policy_document" "ec2_permissions" {
   statement {
     sid = "ec2read"

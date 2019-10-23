@@ -20,6 +20,12 @@ variable default-password {
   default     = "notverysecurepassword"
 }
 
+variable ssh-key {
+  description = "Public SSH key for access to the Nightking node (invalid by default)"
+  type        = "string"
+  default     = "ssh-rsa DEADBEEF not-set"
+}
+
 variable debug {
   description = "Set this to '1', to enable troubleshooting mode. This will keep all the infrastructure around after execution."
   type        = "string"
@@ -31,8 +37,8 @@ provider aws {
 }
 
 resource aws_key_pair nightking {
-  key_name   = "nightking-greg"
-  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDY1d1L3iKHbv1Ivn2zYxdmaohSFwHb4l1lUp+yso1fhvRxJ0NqxLM34vmyRvwNwbukdRSiC84QbQ9Bxl4TuU3H+Gbxs1xfhVIhyRrHwEp8hp6U1pfuG29NtzUwViRxvHKv/HF7sLcA/1ks9ZD0prqP6UkDkivcrlV4iXVEcRCsuhoWYqnOiq93SPTMY5S0CA1jt69+zz07K+QN/TUrgua3TROlWksdGuv35zcf7TIWZIkEElK7HCe6EnhLq3hEe5XgqGIuzDMh/D1rPZ5mBq+YPc1x9f+Y+NPm08UD1WS3OJzPNvHYHYwx6mVnrlwN3AyK5+d7wsSv6fNA2vGqAz/5 greg"
+  key_name   = "nightking-key"
+  public_key = "${var.ssh-key}"
 }
 
 resource aws_security_group nightking {

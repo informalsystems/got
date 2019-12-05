@@ -1368,7 +1368,7 @@
             },
             {
               "params": [
-                "null"
+                "previous"
               ],
               "type": "fill"
             }
@@ -1385,6 +1385,10 @@
                   "gauge"
                 ],
                 "type": "field"
+              },
+              {
+                "params": [],
+                "type": "min"
               }
             ]
           ],

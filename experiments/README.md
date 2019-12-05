@@ -2,10 +2,12 @@
 
 ## Overview
 Each subfolder in this folder contains an experiment that can be executed by the
-Nightking node. Experiment names are structured as `catalogXXX-xpYYY` (e.g.
-`catalog001-xp004`).  Catalog numbers (`XXX`) are simply ways of grouping sets
-of experiments, and experiment numbers (`YYY`) are usually just indicative of
-the number of nodes that will be spun up in that experiment.
+Nightking node. Experiment names are structured as `catalogXXX-YYYnodes-ZZZZtps`
+(e.g. `catalog001-004nodes-0100tps`).  Catalog numbers (`XXX`) are simply ways
+of grouping sets of experiments, and `YYY` are just indicative of the number of
+nodes that will be spun up in that experiment.  Transaction rates (`ZZZZ`)
+indicate the intended total transaction throughput (in transactions per second)
+as seen by the Tendermint network as a whole.
 
 ## Catalog Descriptions
 The following experiment catalogs are currently available.

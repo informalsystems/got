@@ -1,0 +1,116 @@
+# Experiment configuration
+# This file describes common elements of the experiment infrastructure
+# Optionally you can define custom elements by adding Terraform scripts under the `terraform` folder.
+
+##
+# Experiment details
+##
+
+# Number of Starks (Tendermint nodes)
+starks = 8
+starks_zones = ["us-east-1a","us-west-1a","eu-west-1a","eu-north-1a","ap-south-1a","ap-southeast-1a","us-west-2a","eu-central-1a"]
+
+# Number of Whitewalkers (tm-load-test nodes)
+whitewalkers=1
+whitewalkers_zones = ["us-east-1a"]
+
+##
+# Infrastructure default variables
+##
+
+# AWS EC2 instance type for Whitewalker and Stark nodes
+# Note: t2.micro is not available in eu-north-1 region
+instance_type = "t3.micro"
+
+[tm_load_test]
+# Which broadcast_tx_XXX method to use to send transactions to the network. Can
+# be "async", "sync" or "commit".
+broadcast_tx_method = "async"
+
+# Which client factory to use to generate transactions for the load testing.
+# Using the "kvstore" factory assumes that one of the kvstore-compatible ABCI
+# apps is running on the target Tendermint network.
+client_factory = "kvstore"
+
+# The number of connections to open from each slave to each endpoint.
+connections = 1
+
+# The maximum number of transactions to send to each connection to each
+# endpoint from each slave. So, for example, if one has 3 slaves, each with 4
+# endpoints, with 5 connections to each endpoint, and tx_count was 100, you
+# would send a total of 3 x 4 x 5 x 100 = 6000 transactions to the network. Set
+# this to -1 if the only limit you want is time-based.
+tx_count = -1
+
+# The maximum number of transactions per `send_period` to try to generate for
+# each connection to each endpoint.
+tx_rate = 50 # Effective rate = 50 tx/sec * 8 endpoints = 400 tx/sec
+
+# The maximum number of seconds to wait between sending batches of transactions
+# to each endpoint on each connection.
+tx_send_period = 1
+
+# The size of each transaction to be generated, in bytes. Must be greater than
+# 40 bytes.
+tx_size = 250
+
+# The maximum number of seconds for which to send transactions before
+# terminating the load test.
+time = 300
+
+# When indicating to tm-load-test to wait for Tendermint network stabilization,
+# you can tell tm-load-test to use different endpoints based on several
+# different methods:
+# 1. "supplied" - only use the endpoints supplied in the TMLOADTEST_ENDPOINTS
+#    variable.
+# 2. "discovered" - use any of the newly discovered endpoints (discovered by
+#    recursively crawling the TMLOADTEST_ENDPOINTS). This **excludes** the
+#    supplied endpoints in TMLOADTEST_ENDPOINTS.
+# 3. "any" - use any of the endpoints, regardless of whether supplied or
+#    discovered.
+#
+# Here we assume that the supplied endpoint is a seed node, and we don't want
+# to send transactions to the seed node.
+endpoint_select_method = "discovered"
+
+# By way of `endpoint_select_method` and `expect_peers`, we can effectively
+# tell the master to first discover all peers connecting to the Tendermint node
+# running on the same host machine as the master.
+endpoints = "ws://127.0.0.1:26657/websocket"
+
+# `expect_peers` will automatically be configured to be the number of `starks`.
+expect_peers = "{{ .starks }}"
+
+# The maximum number of endpoints to select (via our `endpoint_select_method`)
+# to which to send transactions.
+max_endpoints = "{{ .starks }}"
+
+# The minimum amount of connectivity to expect from all peers (i.e. the minimum
+# number of entries across all peers' address books). This expression is
+# evaluated in BASH by way of an expr directive, e.g. $(expr 8 - 1). If you
+# have 16 peers, the maximum value of min_peer_connectivity is 16 - 1 = 15,
+# because it is assumed that the peers do not include themselves in their own
+# address book. Set this value to 0 to disable the check.
+#
+# NOTE: This value is only relevant if `expect_peers` > 0.
+min_peer_connectivity = "{{ .starks }} - 1"
+
+# The maximum number of seconds to wait for all peers to come online and to
+# establish the minimum amount of peer connectivity.
+peer_connect_timeout = 1800
+
+# How many seconds to make the tm-load-test master wait once load testing
+# has completed before terminating - allows Telegraf to poll it for final
+# metrics/results
+master_shutdown_wait = 60
+
+# The maximum number of seconds to wait for slaves to connect to the master
+# once the master is ready to start load testing.
+master_slave_connect_timeout = 1800
+
+# The number of tm-load-test slaves.
+master_expect_slaves = "{{ .whitewalkers }}"
+
+# The maximum number of seconds to keep retrying to connect to the master
+# before failing and giving up.
+slave_master_connect_timeout = 1800

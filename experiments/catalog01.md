@@ -1,4 +1,4 @@
-# Experiment Catalog 001
+# Experiment Catalog 01
 
 ## Goal(s)
 The goal of this catalog is to try to benchmark the performance of Tendermint

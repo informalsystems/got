@@ -5,13 +5,13 @@
 
 - name: Download tendermint binary
   get_url:
-    url: https://github.com/tendermint/tendermint/releases/download/v0.32.1/tendermint_v0.32.1_linux_amd64.zip
-    dest: /tmp/tendermint.zip
-    checksum: sha256:64a3dad4efce75d63b772fdff85216f809185d762b9232971c3270ef729cc331
+    url: https://github.com/interchainio/got/releases/download/binaries/tendermint_v0.32.8_cleveldb_amazonlinux.tar.bz2
+    dest: /tmp/tendermint.tar.bz2
+    checksum: sha256:de4f91a330c14cf025ac7d3cdc7c9269b92c6e05a09a4bded31b995b3b6d1546
 
 - name: Install tendermint binary
   unarchive:
-    src: /tmp/tendermint.zip
+    src: /tmp/tendermint.tar.bz2
     dest: /usr/bin
     remote_src: yes
     owner: root
@@ -19,7 +19,7 @@
     mode: 0755
 
 - name: Cleanup tendermint post-install
-  file: path=/tmp/tendermint.zip state=absent
+  file: path=/tmp/tendermint.tar.bz2 state=absent
 
 - name: Install tendermint service
   copy: src=tendermint.service dest=/etc/systemd/system/tendermint.service

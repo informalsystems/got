@@ -2,9 +2,12 @@
 
 # Adding all packages here, because installing yum-cron might trigger an update and running another yum process in parallel would fail.
 
-# Amazon Linux
-#- name: Install EPEL
-#  yum: name=epel-release state=present
+# We need EPEL to be able to install the leveldb package
+- name: Install EPEL for Amazon Linux
+  yum:
+    name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    state: present
+    lock_timeout: 180
 
 - name: Get stemplate
   get_url:
@@ -23,12 +26,13 @@
 - name: Update to latest packages
   yum: "name='*' state=latest lock_timeout=180"
 
-- name: Install yum-cron and jq
+- name: Install yum-cron, jq, ntp and leveldb
   yum:
     name:
     - jq
     - yum-cron
     - ntp
+    - leveldb
     state: latest
     lock_timeout: 180
   notify: enable ntp

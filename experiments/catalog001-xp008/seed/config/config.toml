@@ -33,7 +33,8 @@ db_backend = "cleveldb"
 db_dir = "data"
 
 # Output level for logging, including package level options
-log_level = "main:info,state:info,*:error"
+## log_level = "main:info,state:info,*:error"
+log_level = "*:error"
 
 # Output format: 'plain' (colored text) or 'json'
 log_format = "plain"
@@ -207,12 +208,12 @@ dial_timeout = "3s"
 ##### mempool configuration options #####
 [mempool]
 
-recheck = true
-broadcast = true
+recheck = false
+broadcast = false
 wal_dir = ""
 
 # Maximum number of transactions in the mempool
-size = 5000
+size = 2000
 
 # Limit the total size of all txs in the mempool.
 # This only accounts for raw transactions (e.g. given 1MB transactions and
@@ -236,14 +237,14 @@ timeout_precommit_delta = "500ms"
 timeout_commit = "1s"
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
-skip_timeout_commit = false
+skip_timeout_commit = true
 
 # EmptyBlocks mode and possible interval between empty blocks
-create_empty_blocks = true
+create_empty_blocks = false
 create_empty_blocks_interval = "0s"
 
 # Reactor sleep duration parameters
-peer_gossip_sleep_duration = "100ms"
+peer_gossip_sleep_duration = "50ms"
 peer_query_maj23_sleep_duration = "2s"
 
 ##### transactions indexer configuration options #####
@@ -288,7 +289,8 @@ prometheus_listen_addr = ":26660"
 # If you want to accept a larger number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
-max_open_connections = 3
+max_open_connections = 5
 
 # Instrumentation namespace
 namespace = "tendermint"
+

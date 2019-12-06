@@ -99,7 +99,7 @@ max_endpoints = "{{ .starks }}"
 # address book. Set this value to 0 to disable the check.
 #
 # NOTE: This value is only relevant if `expect_peers` > 0.
-min_peer_connectivity = "{{ .starks }} - 1"
+min_peer_connectivity = "{{ .starks }}"
 
 # The maximum number of seconds to wait for all peers to come online and to
 # establish the minimum amount of peer connectivity.

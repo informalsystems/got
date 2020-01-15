@@ -182,6 +182,9 @@ case "${ROLE}" in
   	;;
   "stark"|"whitewalker")
 	export NIGHTKING_SEED_NODE_ID="$(get-nightking-seed-node-id)"
+  # Sleep for a while to allow for population of certificate data into user data
+  # TODO: Find a cleaner way of doing this
+  sleep 30
 esac
 
 ## Common variables for all servers

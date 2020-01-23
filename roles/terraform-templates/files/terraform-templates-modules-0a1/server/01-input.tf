@@ -34,11 +34,6 @@ variable "id" {
   type = "string"
 }
 
-variable "nightking_hostname" {
-  description = "Nightking hostname"
-  type = "string"
-}
-
 variable "nightking_public_ip" {
   description = "Nightking public IP"
   type = "string"
@@ -56,6 +51,17 @@ variable "nightking_seed_node_id" {
 
 variable experiments {
   description = "Experiment name"
+  type = "string"
+}
+
+variable dev {
+  description = "DEV flag"
+  type = "string"
+  default = ""
+}
+
+variable "nightking_host_key" {
+  description = "Nightking SSH host key"
   type = "string"
 }
 

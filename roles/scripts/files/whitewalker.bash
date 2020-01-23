@@ -6,19 +6,28 @@ source /usr/local/sbin/library.bash
 
 ## Sanitize EXPERIMENT input
 trap 'log node 10' ERR
-if [ "${EXPERIMENTS}" == "" ] || [ ! -d /etc/experiments/"${EXPERIMENTS}" ]; then
-  EXPERIMENTS=$(ls /etc/experiments | head -1)
+set +u # Allow optional $1
+if [ -n "${1}" ]; then
+  export XP="${1}"
+else
+  export XP="${EXPERIMENTS}"
 fi
-export XP="${EXPERIMENTS}"
+set -u
 log experiment 0
+
+# Get experiment from nightking
+if [ -n "${DEV}" ]; then
+  rm -rf "${EXPERIMENTS_DIR}/${XP}"
+  sftp -q -r -P 2222 -i "${CACHE_DIR}/pool.key" pool@nightking.got:"${XP}" "${EXPERIMENTS_DIR}"
+fi
 
 # Configure this node
 export WHITEWALKER_ID="whitewalker${ID}"
 # Set up and run tm-load-test master - wait until it finishes
-if [ -f /etc/experiments/"${XP}"/config.toml ]; then
+if [ -f "${EXPERIMENTS_DIR}/${XP}"/config.toml ]; then
   # We run stemplate twice to allow for double variable interpolation - 
   # allows us to refer to variables from within the `config.toml` file too
-  stemplate /usr/local/sbin/tm-load-test-slave.bash --env -f /etc/experiments/"${XP}"/config.toml -o /home/tm-load-test
+  stemplate /usr/local/sbin/tm-load-test-slave.bash --env -f "${EXPERIMENTS_DIR}/${XP}"/config.toml -o /home/tm-load-test
 else
   stemplate /usr/local/sbin/tm-load-test-slave.bash --env -o /home/tm-load-test
 fi

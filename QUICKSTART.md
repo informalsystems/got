@@ -21,5 +21,5 @@ Reminders for the time when you already know what you're doing.
 
 ### Quick start a Nightking AMI build
 - Double-check the `experiments` folder to see if everything is there.
-- Run `packer build packer.json` with AWS access.
+- Run `NOAUTORUN=1 packer build packer.json` with AWS access.
 - Check the description of the AMI at the end to get the timestamp.

@@ -49,6 +49,12 @@ You can build a new Nightking image with the following command:
 packer build packer.json
 ```
 
+Alternatively, if you don't want to run experiments automatically (for example this will be a developer's AMI), you can
+set NOAUTORUN=1 in the environment before you start building:
+```shell script
+NOAUTORUN=1 packer build packer.json
+```
+
 - Packer spawns an EC2 instance in AWS based on Amazon Linux, in the us-east-1 region.
 - Packer uses Ansible to apply the defined roles on the running server.
 - Packer shuts down the server and copies the image over to the below regions:

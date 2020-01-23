@@ -4,16 +4,26 @@ exec 2>&1
 set -euo pipefail
 source /usr/local/sbin/library.bash
 
+###
 ## Sanitize EXPERIMENT input
+###
 trap 'log experiment 10' ERR
+# If there was an input parameter, override tag defaults.
+set +u # Allow optional $1
+if [ -n "${1}" ]; then
+  EXPERIMENTS="${1}"
+fi
+set -u
+# If there were no tags, run all experiments.
 if [ "${EXPERIMENTS}" == "" ]; then
-  EXPERIMENTS=$(ls /etc/experiments)
+  EXPERIMENTS=$(ls "${EXPERIMENTS_DIR}")
+# If experiments were defined (either in the command-line or on the tag), run the ones that have config.
 else
   CLEANED_EXPERIMENTS=""
   for XP in ${EXPERIMENTS}
   do
-    test -d /etc/experiments/"${XP}" || echo "Experiment ${XP} folder not found. Skipping..."
-    test -d /etc/experiments/"${XP}" || continue
+    test -d "${EXPERIMENTS_DIR}/${XP}" || echo "Experiment ${XP} folder not found. Skipping..."
+    test -d "${EXPERIMENTS_DIR}/${XP}" || continue
     CLEANED_EXPERIMENTS="${CLEANED_EXPERIMENTS} ${XP}"
   done
   EXPERIMENTS="${CLEANED_EXPERIMENTS# }"
@@ -27,58 +37,73 @@ do
     export XP
     echo "Running experiment: ${XP}"
 
+    XP_DIR="${EXPERIMENTS_DIR}/${XP}"
     # Set up tendermint seed node
     trap 'log seed 10' ERR
     log seed 1
     sudo -u tendermint tendermint init
     sudo -u tendermint tendermint unsafe_reset_all
-    if [ -f /etc/experiments/"${XP}"/genesis.json ]; then
+    if [ -f "${XP_DIR}"/genesis.json ]; then
       mkdir -p /home/tendermint/.tendermint/config/
-      stemplate /etc/experiments/"${XP}"/genesis.json --env -f /etc/experiments/"${XP}"/config.toml -o /home/tendermint/.tendermint/config/
+      stemplate "${XP_DIR}"/genesis.json --env -f "${XP_DIR}"/config.toml -o /home/tendermint/.tendermint/config/
     fi
-    stemplate /etc/experiments/"${XP}"/seed/ -o /home/tendermint/.tendermint/ -f /etc/experiments/"${XP}"/config.toml --all
+    stemplate "${XP_DIR}"/seed/ -o /home/tendermint/.tendermint/ -f "${XP_DIR}"/config.toml --all
     chown -R tendermint.tendermint /home/tendermint/.tendermint
-    sudo -u tendermint tendermint show_node_id > /var/log/nightking/seed_node_id
-    export NIGHTKING_SEED_NODE_ID="$(cat /var/log/nightking/seed_node_id)"
+    sudo -u tendermint tendermint show_node_id > "${CACHE_DIR}/nightking-seed-node-id"
+    export NIGHTKING_SEED_NODE_ID="$(get nightking-seed-node-id)"
     systemctl start tendermint
     log seed 0
     trap '' ERR
 
+    ##
     # Set up terraform
-    trap 'log terraform_build 12' ERR
-        export SSH_KEY="$(tail -1 /home/ec2-user/.ssh/authorized_keys)"
-    if [ -f /etc/experiments/"${XP}"/config.toml ]; then
-      stemplate /usr/share/terraform-templates --env -f /etc/experiments/"${XP}"/config.toml -o /root/terraform-"${XP}" --all
-      if [ -d /etc/experiments/"${XP}"/terraform ]; then
-        stemplate /etc/experiments/"${XP}"/terraform --env -f /etc/experiments/"${XP}"/config.toml -o /root/terraform-"${XP}" --all
+    ##
+    PREVIOUS_INFRA="$(peek-cache infra || echo '')"
+    # Build a new infra or ...
+    if [ -z "${PREVIOUS_INFRA}" ]; then
+      trap 'log terraform_build 12' ERR
+      export SSH_KEY="$(tail -1 /home/ec2-user/.ssh/authorized_keys)"
+      if [ -f "${XP_DIR}"/config.toml ]; then
+        stemplate /usr/share/terraform-templates --env -f "${XP_DIR}"/config.toml -o /root/terraform-"${XP}" --all
+        if [ -d "${XP_DIR}"/terraform ]; then
+          stemplate "${XP_DIR}"/terraform --env -f "${XP_DIR}"/config.toml -o /root/terraform-"${XP}" --all
+        fi
+      else
+        if [ -d "${XP_DIR}"/terraform ]; then
+          stemplate "${XP_DIR}"/terraform -o /root/terraform-"${XP}" --env -f "${XP_DIR}"/config.toml --all
+        fi
       fi
+      test -d /root/terraform-"${XP}" || echo "Experiment folder /root/terraform-${XP} not found."
+      test -d /root/terraform-"${XP}" || continue
+      cd /root/terraform-"${XP}"
+      trap 'log terraform_build 11' ERR
+      log terraform_build 2
+      terraform init
+      trap 'log terraform_build 10' ERR
+      log terraform_build 1
+      export TERRAFORM_RESULT=0
+      terraform apply --auto-approve -no-color || export TERRAFORM_RESULT=$?
+    # ... reinitialize a previous infra.
     else
-      if [ -d /etc/experiments/"${XP}"/terraform ]; then
-        stemplate /etc/experiments/"${XP}"/terraform -o /root/terraform-"${XP}" --env -f /etc/experiments/"${XP}"/config.toml --all
-      fi
+      IP_LIST="$(terraform show /root/terraform-${PREVIOUS_INFRA}/terraform.tfstate -no-color | grep "^  public_ip =" | sed "s/^  public_ip = //" | tr '\n' ' ')"
+      sudo -u ec2-user pssh -p 20 -t 10 -i -O "StrictHostKeyChecking no" -H "${IP_LIST}" sudo nohup /usr/local/sbin/run-role.bash "${XP}" &
     fi
-    test -d /root/terraform-"${XP}" || echo "Experiment folder /root/terraform-${XP} not found."
-    test -d /root/terraform-"${XP}" || continue
-    cd /root/terraform-"${XP}"
-    trap 'log terraform_build 11' ERR
-    log terraform_build 2
-    terraform init
-    trap 'log terraform_build 10' ERR
-    log terraform_build 1
-    export TERRAFORM_RESULT=0
-    terraform apply --auto-approve -no-color || export TERRAFORM_RESULT=$?
 
+    ##
+    # Run experiment
+    ##
     if [ ${TERRAFORM_RESULT} -ne 0 ]; then
       log terraform_build 10
     else
+      echo "${XP}" > "${CACHE_DIR}/infra" #Keep a record of the infra that is fully built
       log terraform_build 0
 
       # Set up and run tm-load-test master - wait until it finishes
-      if [ -f /etc/experiments/"${XP}"/config.toml ]; then
+      if [ -f "${XP_DIR}"/config.toml ]; then
         # We run stemplate twice to allow for double variable interpolation -
         # allows us to refer to variables from within the `config.toml` file too
-        stemplate /usr/local/sbin/tm-load-test-master.bash --env -f /etc/experiments/"${XP}"/config.toml -o /tmp
-        stemplate /tmp/tm-load-test-master.bash --env -f /etc/experiments/"${XP}"/config.toml -o /home/tm-load-test
+        stemplate /usr/local/sbin/tm-load-test-master.bash --env -f "${XP_DIR}"/config.toml -o /tmp
+        stemplate /tmp/tm-load-test-master.bash --env -f "${XP_DIR}"/config.toml -o /home/tm-load-test
       else
         stemplate /usr/local/sbin/tm-load-test-master.bash --env -o /tmp
         stemplate /tmp/tm-load-test-master.bash --env -o /home/tm-load-test
@@ -101,14 +126,19 @@ do
       fi
     fi
 
+    ##
+    # Finish experiment
+    ##
     if [ -z "${DEBUG}" ]; then
       # Break down terraform
       trap 'log terraform_destroy 2' ERR
       log terraform_destroy 1
       terraform destroy --force -no-color
+      rm -f "${CACHE_DIR}/infra"
       log terraform_destroy 0
     fi
 
+    # If one of the experiments failed while building the infrastructure, do not run the rest of the experiments.
     if [ ${TERRAFORM_RESULT} -ne 0 ]; then
       break
     fi

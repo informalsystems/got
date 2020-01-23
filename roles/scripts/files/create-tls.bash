@@ -2,12 +2,11 @@
 
 set -euo pipefail
 
-test -f /var/log/nightking/.tls-setup-finished && exit
-
 source /usr/local/sbin/library.bash
+get-flag tls-setup-finished
 
-hostname "${PUBLIC_HOSTNAME}"
-echo "127.0.0.1   ${PUBLIC_HOSTNAME}" >> /etc/hosts
+hostname "nightking.got"
+echo "127.0.0.1   nightking.got" >> /etc/hosts
 
 DATE="$(date '+%Y-%m-%d %H:%M:%S')"
 ca() {
@@ -28,7 +27,7 @@ nightking() {
   echo "Toronto"
   echo "Game of Tendermint"
   echo ""
-  echo "${PUBLIC_HOSTNAME}"
+  echo "nightking.got"
   echo "hello@interchain.io"
   echo ""
   echo ""
@@ -42,9 +41,9 @@ test -f /etc/pki/CA/index.txt || touch /etc/pki/CA/index.txt
 test -f /etc/pki/CA/serial || echo "00" > /etc/pki/CA/serial
 
 # Accept CA certificate on system
-cat /etc/pki/CA/cacert.pem >> /etc/ssl/certs/ca-bundle.crt
-cat /etc/pki/CA/cacert.pem | tr '\n' '$' > /var/log/nightking/ca.crt
-cp /etc/pki/CA/cacert.pem /usr/share/nginx/html/nightkingca.crt
+cat /etc/pki/CA/cacert.pem >> /etc/ssl/certs/ca-bundle.crt #OS Trusted CA
+cat /etc/pki/CA/cacert.pem | tr '\n' '$' > "${LOG_DIR}/ca.crt" #Prepare for terraform shipping
+cp /etc/pki/CA/cacert.pem /usr/share/nginx/html/nightkingca.crt #File offered on HTTP for download
 
 # Nightking certificate
 openssl genrsa -out /etc/ssl/nightking.key
@@ -59,4 +58,4 @@ cat /etc/ssl/nightking.key /etc/ssl/nightking.crt > /etc/ssl/influxdb.pem
 chmod 400 /etc/ssl/influxdb.pem
 chown influxdb.influxdb /etc/ssl/influxdb.pem
 
-touch /var/log/nightking/.tls-setup-finished
+set-flag tls-setup-finished

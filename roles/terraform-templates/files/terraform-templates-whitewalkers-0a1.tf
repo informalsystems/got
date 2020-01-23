@@ -9,12 +9,13 @@ module whitewalker{{.}} {
   ssh_key = "{{ $.SSH_KEY }}"
   role = "whitewalker"
   id = "{{ . }}"
-  nightking_hostname = "{{ $.NIGHTKING_HOSTNAME }}"
   nightking_public_ip = "{{ $.NIGHTKING_IP }}"
   nightking_private_ip = "{{ $.NIGHTKING_PRIVATE_IP }}"
   nightking_seed_node_id = "{{ $.NIGHTKING_SEED_NODE_ID}}"
   telegraf = "{{ $.INFLUX_TELEGRAF_PASSWORD }}"
   experiments = "{{ $.XP }}"
+  dev = "{{ $.DEV }}"
+  nightking_host_key = "{{ $.NIGHTKING_HOST_KEY }}"
   user_data_base64_rendered = "${data.template_cloudinit_config.userdata.rendered}"
 }
 {{end}}

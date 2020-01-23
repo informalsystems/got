@@ -18,11 +18,12 @@ resource aws_instance server {
     Name = "${var.role}${var.id}"
     id = "${var.id}"
     role = "${var.role}"
-    nightking-hostname = "${var.nightking_hostname}"
     nightking-ip = "${var.nightking_public_ip}"
     nightking-private-ip = "${var.nightking_private_ip}"
-    telegraf = "${var.telegraf}"
+    influx-telegraf-password = "${var.telegraf}"
     nightking-seed-node-id = "${var.nightking_seed_node_id}"
     experiments = "${var.experiments}"
+    dev = "${var.dev}"
+    nightking-host-key = "${var.nightking_host_key}"
   }
 }

@@ -3,34 +3,19 @@ exec > /var/log/nightking/startup.output
 exec 2>&1
 set -euo pipefail
 
+# Check if user-data has finished on stark and whitewalker nodes. Only start execution after that.
 if [ ! -f /var/log/nightking/flag/user-data-finished ]; then
-  source /usr/local/sbin/library.bash || echo "At first run of startk/whitewalker, the library.bash can't populate until user-data finished."
-  if [ "${ROLE}" != "nightking" ]; then
-    # Wait for user-data to finish before everything else
-    USERDATACOUNTER=0
-    while [ ! -f /var/log/nightking/flag/user-data-finished ];
-    do
-      sleep 1
-      USERDATACOUNTER="$(expr "USERDATACOUNTER" + 1)"
-      if [ "USERDATACOUNTER" -ge 120 ]; then
-        echo "Startup failed: could not wait for user-data to finish." > "${LOG_DIR}/startup-error"
-        exit
-      fi
-    done
-    #Repopulate cache
-    rm "${CACHE_DIR}"/*
-    source /usr/local/sbin/library.bash
+  source /usr/local/sbin/library.bash light
+  if [ "$(get role)" != "nightking" ]; then
+    wait_for_file /var/log/nightking/flag/user-data-finished || (echo "Startup failed: could not wait for user-data to finish." > "${LOG_DIR}/startup-error"; exit)
   fi
-else
-  source /usr/local/sbin/library.bash
 fi
 
+source /usr/local/sbin/library.bash
 rm -rf "${LOG_DIR}/startup-error"
 
-#Run once
+#Run once and setup basic services
 if [ -z "$(peek-flag startup-finished)" ]; then
-  ntpdate pool.ntp.org || echo "ntpdate did not run. That's ok."
-  systemctl start ntpd
   if [ "${ROLE}" == "nightking" ]; then
     # Create InfluxDB and Grafana for monitoring
     /usr/local/sbin/create-tls.bash
@@ -53,23 +38,16 @@ if [ -n "${DEV}" ]; then
     chmod 500 "${HOME}/.ssh"
     chmod 400 "${HOME}/.ssh/known_hosts"
   fi
-  # Get a pool.key and do not autorun experiments in DEV mode
-    POOLKEYCOUNTER=0
-    while [ ! -f /var/log/nightking/cache/pool.key ];
-    do
-      sleep 1
-      POOLKEYCOUNTER="$(expr "POOLKEYCOUNTER" + 1)"
-      if [ "POOLKEYCOUNTER" -ge 120 ]; then
-        echo "Startup failed: could not find pool key in DEV mode." > "${LOG_DIR}/startup-error"
-        exit
-      fi
-    done
+    # Get a pool.key
+    wait_for_file /var/log/nightking/cache/pool.key || (echo "Startup failed: could not find pool key in DEV mode." > "${LOG_DIR}/startup-error"; exit)
+    # Do not autorun experiments in DEV mode
     exit
 fi
 
-#Do not autorun experiments if noautorun was defined at AMI build and no experimetns were defined in the tags
+#Do not autorun experiments if noautorun was defined at AMI build and no experiments were defined in the tags
 if [ "${EXPERIMENTS}" == "" ]; then
   get-flag noautorun
 fi
 
-/usr/local/sbin/run-role.bash
+# Execute the role of the server
+/usr/local/sbin/runxp

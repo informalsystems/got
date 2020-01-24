@@ -7,13 +7,10 @@ get-flag telegraf-setup-finished
 
 # Disable example influxdb setup in main config
 sed -i 's/^\(\s\|#\)*\[\[outputs\.influxdb\]\].*$/#[[outputs.influxdb]]/' /etc/telegraf/telegraf.conf
-# Todo: Low priority cleanup: Change the global hostname instead of fixing the telegraf agent config
-# This is implemented, but untested, so let's test it.
-#sed -i 's/^\(\s\|#\)*hostname\s*=.*$/  hostname = "'"${ROLE}${ID}"'"/' /etc/telegraf/telegraf.conf
 
 if [ "${ROLE}" != "nightking" ]; then
   echo "${NIGHTKING_IP}   nightking.got" >> /etc/hosts
-  hostname "${ROLE}${ID}"
+  hostname "${ROLE}${ID}" #This is important so Grafana shows the right hostnames
 
   CERTCHECKCOUNTER=0
   while [ ! -f /var/log/nightking/ca.crt ];
@@ -35,6 +32,8 @@ cat << EOF > /etc/telegraf/telegraf.d/influx.conf
   username = "telegraf"
   password = "${INFLUX_TELEGRAF_PASSWORD}"
 EOF
+echo "${INFLUX_TELEGRAF_PASSWORD}" > "${LOG_DIR}/influx-telegraf-password"
+chmod 400 "${LOG_DIR}/influx-telegraf-password"
 chmod 0440 /etc/telegraf/telegraf.d/influx.conf
 chgrp telegraf /etc/telegraf/telegraf.d/influx.conf
 

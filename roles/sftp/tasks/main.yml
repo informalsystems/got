@@ -1,0 +1,14 @@
+---
+
+- name: Create pool user
+  user: name=pool create_home=no home=/etc/experiments password_lock=yes shell=/sbin/nologin
+
+- name: Copy sftpd config descriptor
+  copy: src=sftpd dest=/etc/sysconfig/sftpd
+
+- name: Copy sftpd config
+  copy: src=sftpd_config dest=/etc/ssh/sftpd_config mode=0400
+
+- name: Install sftpd service
+  copy: src=sftpd.service dest=/etc/systemd/system/sftpd.service
+  notify: reload systemd

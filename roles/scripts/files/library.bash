@@ -90,7 +90,7 @@ get() {
 
 # Get cache value if exists. If not set errorcode to 1.
 peek-cache() {
-  cat "${CACHE_DIR}/${1}"
+  cat "${CACHE_DIR}/${1}" 2> /dev/null
 }
 
 # Get meta information from AWS endpoint
@@ -135,6 +135,15 @@ log() {
   influx -ssl -host nightking.got -username telegraf -password "$(get influx-telegraf-password)" -database telegraf -execute "INSERT $(get role)$(get id) ${1}=${2}"
 }
 
+wait_for_file() {
+  COUNTER=0
+  while [ "${COUNTER}" -lt 120 ] && [ ! -f "${1}" ];
+  do
+    sleep 1
+    COUNTER="$(expr "${COUNTER}" + 1)"
+  done
+  test -f "${1}"
+}
 
 #Check if a flag is set - exit if it is
 get-flag() {
@@ -151,56 +160,60 @@ set-flag() {
   touch "${FLAG_DIR}/${1}"
 }
 
-## Game of Tendermint role variable $ROLE is used in this script
-export ROLE="$(get role)"
+# Add a "light" option that does not populate all variables. Useful at startup when not everything can be populated yet.
+if [ "${1:-}" != "light" ]; then
+  ## Game of Tendermint role variable $ROLE is used in this script
+  export ROLE="$(get role)"
 
-## $ROLE-specific variables
-case "${ROLE}" in
-  "nightking")
-	# InfluxDB Admin variable
-	export INFLUX_ADMIN_PASSWORD="$(get influx-admin-password)"
-	# Grafana web interface password set in AWS tag
-	export PASSWORD_TAG="$(get password)"
-	# Debug flag set in AWS tag
-	test -n "${FAST:-}" || export DEBUG="$(get debug)"
+  ## $ROLE-specific variables
+  case "${ROLE}" in
+    "nightking")
+    # InfluxDB Admin variable
+    export INFLUX_ADMIN_PASSWORD="$(get influx-admin-password)"
+    # Grafana web interface password set in AWS tag
+    export PASSWORD_TAG="$(get password)"
+    # Debug flag set in AWS tag
+    test -n "${FAST:-}" || export DEBUG="$(get debug)"
 
-	# Get AMI owner
-	export AMI_OWNER="$(get ami-owner)"
-	# Get AMI name
-	export AMI_NAME="$(get ami-name)"
-  	;;
-  "stark"|"whitewalker")
-	export NIGHTKING_SEED_NODE_ID="$(get nightking-seed-node-id)"
-esac
+    # Get AMI owner
+    export AMI_OWNER="$(get ami-owner)"
+    # Get AMI name
+    export AMI_NAME="$(get ami-name)"
+      ;;
+    "stark"|"whitewalker")
+    export NIGHTKING_SEED_NODE_ID="$(get nightking-seed-node-id)"
+  esac
 
-## Common variables for all servers
-# DEV flag set in AWS tag
-test -n "${FAST:-}" || export DEV="$(get dev)"
-# Public ip variable
-export PUBLIC_IP="$(get public-ipv4)"
-# Private ip variable
-export PRIVATE_IP="$(get private-ip)"
-# Instance ID variable
-export INSTANCE_ID="$(get instance-id)"
-# AWS AMI ID
-export AMI="$(get ami)"
-# AWS region variable
-export AWS_REGION="$(get aws-region)"
-# Get node ID
-export ID="$(get id)"
-# InfluxDB Telegraf password variable
-export INFLUX_TELEGRAF_PASSWORD="$(get influx-telegraf-password)"
-# Experiments listed in AWS tag
-test -n "${FAST:-}" || export EXPERIMENTS="$(get experiments)"
-# Nightking public IP variable
-export NIGHTKING_IP="$(get nightking-ip)"
-# Nightking IP variable
-export NIGHTKING_PRIVATE_IP="$(get nightking-private-ip)"
-# Get CA certificate
-export CACERT="$(get ca-cert)"
+  ## Common variables for all servers
+  # DEV flag set in AWS tag
+  test -n "${FAST:-}" || export DEV="$(get dev)"
+  # Public ip variable
+  export PUBLIC_IP="$(get public-ipv4)"
+  # Private ip variable
+  export PRIVATE_IP="$(get private-ip)"
+  # Instance ID variable
+  export INSTANCE_ID="$(get instance-id)"
+  # AWS AMI ID
+  export AMI="$(get ami)"
+  # AWS region variable
+  export AWS_REGION="$(get aws-region)"
+  # Get node ID
+  export ID="$(get id)"
+  # InfluxDB Telegraf password variable
+  export INFLUX_TELEGRAF_PASSWORD="$(get influx-telegraf-password)"
+  # Experiments listed in AWS tag
+  test -n "${FAST:-}" || export EXPERIMENTS="$(get experiments)"
+  # Nightking public IP variable
+  export NIGHTKING_IP="$(get nightking-ip)"
+  # Nightking IP variable
+  export NIGHTKING_PRIVATE_IP="$(get nightking-private-ip)"
+  # Get CA certificate
+  export CACERT="$(get ca-cert)"
 
-## DEV=1 variables
-if [ -n "${DEV:-}" ]; then
-  export POOL_KEY="$(get pool.key || echo '')"
-  export NIGHTKING_HOST_KEY="$(get nightking-host-key)"
+  ## DEV=1 variables
+  if [ -n "${DEV:-}" ]; then
+    export POOL_KEY="$(get pool.key || echo '')"
+    export NIGHTKING_HOST_KEY="$(get nightking-host-key)"
+  fi
+
 fi

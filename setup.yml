@@ -15,6 +15,8 @@
     - tendermint
     - monitoring
     - experiments
+    #sftp depends on the experiments role so the /etc/experiments folder is created
+    - sftp
     - scripts
-    #tm-load-test now depends on the scripts role, because scripts introduces a group that tm-load-test need to be part of.
+    #tm-load-test depends on the scripts role, because scripts introduces a group that tm-load-test need to be part of.
     - tm-load-test

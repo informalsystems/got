@@ -59,10 +59,15 @@ do
     # Set up terraform
     ##
     PREVIOUS_INFRA="$(peek-cache infra || echo '')"
-    # Build a new infra or ...
+    export TERRAFORM_RESULT=0
+    # Build a new infra
     if [ -z "${PREVIOUS_INFRA}" ]; then
       trap 'log terraform_build 12' ERR
-      export SSH_KEY="$(tail -1 /home/ec2-user/.ssh/authorized_keys)"
+      if [ -n "${DEV}" ]; then
+        export SSH_KEY="$(tail -1 /etc/experiments/.pool)"
+      else
+        export SSH_KEY="$(tail -1 /home/ec2-user/.ssh/authorized_keys)"
+      fi
       if [ -f "${XP_DIR}"/config.toml ]; then
         stemplate /usr/share/terraform-templates --env -f "${XP_DIR}"/config.toml -o /root/terraform-"${XP}" --all
         if [ -d "${XP_DIR}"/terraform ]; then
@@ -81,12 +86,9 @@ do
       terraform init
       trap 'log terraform_build 10' ERR
       log terraform_build 1
-      export TERRAFORM_RESULT=0
       terraform apply --auto-approve -no-color || export TERRAFORM_RESULT=$?
-    # ... reinitialize a previous infra.
     else
-      IP_LIST="$(terraform show /root/terraform-${PREVIOUS_INFRA}/terraform.tfstate -no-color | grep "^  public_ip =" | sed "s/^  public_ip = //" | tr '\n' ' ')"
-      sudo -u ec2-user pssh -p 20 -t 10 -i -O "StrictHostKeyChecking no" -H "${IP_LIST}" sudo nohup /usr/local/sbin/run-role.bash "${XP}" &
+      cd /root/terraform-"${PREVIOUS_INFRA}"
     fi
 
     ##
@@ -95,8 +97,22 @@ do
     if [ ${TERRAFORM_RESULT} -ne 0 ]; then
       log terraform_build 10
     else
-      echo "${XP}" > "${CACHE_DIR}/infra" #Keep a record of the infra that is fully built
+      if [ -z "${PREVIOUS_INFRA}" ]; then
+        echo "${XP}" > "${CACHE_DIR}/infra" #Keep a record of the infra that is fully built
+      fi
       log terraform_build 0
+
+      #When DEV=1, the infrastructure needs a kick to start.
+      if [ -n "${DEV}" ]; then
+        IP_LIST="$(terraform show ./terraform.tfstate -no-color | grep "^  public_ip =" | sed "s/^  public_ip = //" | tr '\n' ' ')"
+        # Get some time for new infrastructure to come up
+        if [ -z "${PREVIOUS_INFRA}" ]; then
+          echo "Waiting for infrastructure to stabilize in the cloud."
+          sleep 90
+        fi
+        # 3 minutes timeout because new servers might still need time
+        pssh -l ec2-user -p 20 -t 180 -i -O "StrictHostKeyChecking no" -O "LogLevel ERROR" -x "-i ${LOG_DIR}/pool.key" -H "${IP_LIST}" "sudo /usr/local/sbin/runxp \"${XP}\""
+      fi
 
       # Set up and run tm-load-test master - wait until it finishes
       if [ -f "${XP_DIR}"/config.toml ]; then

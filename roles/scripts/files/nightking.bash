@@ -30,6 +30,24 @@ else
 fi
 log experiment 0
 
+###
+## Check if a previous experiment is still running
+###
+PIDS="$(pidof tm-load-test || echo "")"
+if [ -n "${PIDS}" ]; then
+  echo "Previous running experiments were found at PID(s): ${PIDS}."
+  if [ -n "${DEV}" ] && [ -n "${DEBUG}" ]; then
+    echo "Initiating graceful shutdown of those PID(s)."
+    kill "${PIDS}"
+  else
+    echo "Please shut down experiments using 'stopxp' before starting a new one."
+    exit 1
+  fi
+fi
+
+###
+## Run experiments
+###
 for XP in ${EXPERIMENTS}
 do
 

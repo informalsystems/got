@@ -5,13 +5,13 @@ source /usr/local/sbin/library.bash
 
 case "${ROLE}" in
   "nightking")
-    nohup /usr/local/sbin/nightking.bash "$@" &
+    nohup /usr/local/sbin/nightking.bash "$@" 1> /dev/null 2>&1 &
     ;;
   "whitewalker")
-    nohup /usr/local/sbin/whitewalker.bash "$@" &
+    nohup /usr/local/sbin/whitewalker.bash "$@" 1> /dev/null 2>&1 &
     ;;
   "stark")
-    nohup /usr/local/sbin/stark.bash "$@" &
+    nohup /usr/local/sbin/stark.bash "$@" 1> /dev/null 2>&1 &
     ;;
   *)
     echo "Cannot understand ROLE=${ROLE}" > "${LOG_DIR}/startup-error"

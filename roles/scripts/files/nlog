@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+LOG_DIR=/var/log/nightking
+
+F_FLAG=""
+FILES=""
+
+for arg in "$@"
+do
+    case $arg in
+        "-f")
+           F_FLAG="$arg"
+           ;;
+        *)
+          FILES="${FILES} $(ls -rt "${LOG_DIR}/${1:-nightking}"* | grep \.output$ | tail -1)"
+           ;;
+   esac
+   shift
+done
+
+test -n "${FILES}" || FILES="$(ls -rt "${LOG_DIR}/${1:-nightking}"* | grep \.output$ | tail -1)"
+echo "Tailing ${F_FLAG}${FILES}"
+tail ${F_FLAG} ${FILES}

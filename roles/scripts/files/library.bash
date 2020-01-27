@@ -214,6 +214,7 @@ if [ "${1:-}" != "light" ]; then
   if [ -n "${DEV:-}" ]; then
     export POOL_KEY="$(get pool.key || echo '')"
     export NIGHTKING_HOST_KEY="$(get nightking-host-key)"
+    complete -W "${ROLE} startup tm-load-test" nlog
   fi
 
 fi

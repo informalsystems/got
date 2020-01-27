@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source /usr/local/sbin/library.bash
+
+stop-tm-load-test() {
+    PIDS="$(pidof tm-load-test || echo "")"
+    if [ -z "${PIDS}" ]; then
+        echo "No pids found for tm-load-test."
+    else
+        echo "Killing tm-load-test PID(s): ${PIDS}"
+        kill "${PIDS}"
+    fi
+}
+
+stop-tendermint() {
+    systemctl tendermint stop || true
+}
+
+case "${ROLE}" in
+  "nightking")
+    stop-tm-load-test
+    test -z "${FULL}" || stop-tendermint
+    ;;
+  "whitewalker")
+    stop-tm-load-test
+    ;;
+  "stark")
+    test -z "${FULL}" || stop-tendermint
+    ;;
+  *)
+    echo "Cannot understand ROLE=${ROLE}" > "${LOG_DIR}/startup-error"
+    ;;
+esac

@@ -119,7 +119,7 @@ do
       # Break down terraform
       trap 'log terraform_destroy 2' ERR
       log terraform_destroy 1
-      destroy-terraform "${XP}"
+      force-destroy-terraform "${XP}"
       log terraform_destroy 0
     fi
 

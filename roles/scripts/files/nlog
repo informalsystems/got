@@ -5,20 +5,25 @@ LOG_DIR=/var/log/nightking
 
 F_FLAG=""
 FILES=""
+TAIL_NUM=10
 
 for arg in "$@"
 do
     case $arg in
         "-f")
-           F_FLAG="$arg"
-           ;;
+          F_FLAG="$arg"
+          ;;
         *)
-          FILES="${FILES} $(ls -rt "${LOG_DIR}/${1:-nightking}"* | grep \.output$ | tail -1)"
-           ;;
+          if [ "${arg##-}" -eq "${arg##-}" ] 2> /dev/null; then
+            TAIL_NUM="${arg##-}"
+          else
+            FILES="${FILES} $(ls -rt "${LOG_DIR}/${1:-nightking}"* | grep \.output$ | tail -1)"
+          fi
+          ;;
    esac
-   shift
 done
 
+FILES="${FILES## }"
 test -n "${FILES}" || FILES="$(ls -rt "${LOG_DIR}/${1:-nightking}"* | grep \.output$ | tail -1)"
-echo "Tailing ${F_FLAG}${FILES}"
-tail ${F_FLAG} ${FILES}
+echo "Tailing ${F_FLAG} -n ${TAIL_NUM} ${FILES}"
+tail ${F_FLAG} -n ${TAIL_NUM} ${FILES}

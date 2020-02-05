@@ -24,23 +24,6 @@ fi
 # Set up tendermint node
 trap 'log node 10' ERR
 log "node{$ID}" 1
-systemctl stop tendermint
-sudo -u tendermint tendermint init
-sudo -u tendermint tendermint unsafe_reset_all
-if [ -f "${EXPERIMENTS_DIR}/${XP}/genesis.json" ]; then
-  mkdir -p /home/tendermint/.tendermint/config/
-  stemplate "${EXPERIMENTS_DIR}/${XP}/genesis.json" -o /home/tendermint/.tendermint/config/ --env -f "${EXPERIMENTS_DIR}/${XP}/config.toml"
-fi
-if [ -d "${EXPERIMENTS_DIR}/${XP}/node" ]; then
-  mkdir -p /home/tendermint/.tendermint/config/
-  stemplate "${EXPERIMENTS_DIR}/${XP}/node/" -o /home/tendermint/.tendermint/ --env -f "${EXPERIMENTS_DIR}/${XP}/config.toml" --all
-fi
-if [ -d "${EXPERIMENTS_DIR}/${XP}/node${ID}" ]; then
-  mkdir -p /home/tendermint/.tendermint/config/
-  stemplate "${EXPERIMENTS_DIR}/${XP}/node${ID}" -o /home/tendermint/.tendermint/ --env -f "${EXPERIMENTS_DIR}/${XP}/config.toml" --all
-fi
-chown -R tendermint.tendermint /home/tendermint/.tendermint
-sudo -u tendermint tendermint show_node_id > /var/log/nightking/node_id
-systemctl start tendermint
+setup-tendermint "${XP}"
 log "node${ID}" 0
 trap '' ERR

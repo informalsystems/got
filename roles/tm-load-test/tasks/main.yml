@@ -5,9 +5,9 @@
 
 - name: Install tm-load-test binary
   get_url:
-    url: https://github.com/interchainio/tm-load-test/releases/download/v0.6.2/tm-load-test
+    url: https://github.com/interchainio/tm-load-test/releases/download/v0.9.0/tm-load-test
     dest: /usr/bin/tm-load-test
-    checksum: sha256:567e918a0f67dd36a075cd0328aa5c76a683e342b4f83c6cba330493a58c84b3
+    checksum: sha256:ea61198e57df4e63b602dffdc973200ce0f9106e96cfcf6cf643242732a2af56
     mode: 0755
     owner: root
     group: root

@@ -37,7 +37,7 @@ PIDS="$(pidof tm-load-test || echo "")"
 if [ -n "${PIDS}" ]; then
   echo "Previous running experiments were found at PID(s): ${PIDS}."
   if [ -n "${DEV}" ] && [ -n "${DEBUG}" ]; then
-    echo "Initiating graceful shutdown of those PID(s)."
+    echo "Initiating graceful shutdown of PID(s)."
     kill "${PIDS}"
   else
     echo "Please shut down experiments using 'stopxp' before starting a new one."
@@ -55,89 +55,41 @@ do
     export XP
     echo "Running experiment: ${XP}"
 
-    XP_DIR="${EXPERIMENTS_DIR}/${XP}"
+    # Stopgap for previous network polluting fresh seed node (hence failing fresh network).
+    # Todo: When persistent_peers are set, this should be revised.
+    if [ -n "${DEV}" ] && [ -n "${PREVIOUS_INFRA}" ]; then
+      FULL=1 /usr/local/sbin/stopxp || echo "WARNING: Could not stop previous experiment processes. Continuing."
+    fi
+
     # Set up tendermint seed node
     trap 'log seed 10' ERR
     log seed 1
-    sudo -u tendermint tendermint init
-    sudo -u tendermint tendermint unsafe_reset_all
-    if [ -f "${XP_DIR}"/genesis.json ]; then
-      mkdir -p /home/tendermint/.tendermint/config/
-      stemplate "${XP_DIR}"/genesis.json --env -f "${XP_DIR}"/config.toml -o /home/tendermint/.tendermint/config/
-    fi
-    stemplate "${XP_DIR}"/seed/ -o /home/tendermint/.tendermint/ -f "${XP_DIR}"/config.toml --all
-    chown -R tendermint.tendermint /home/tendermint/.tendermint
-    sudo -u tendermint tendermint show_node_id > "${CACHE_DIR}/nightking-seed-node-id"
-    export NIGHTKING_SEED_NODE_ID="$(get nightking-seed-node-id)"
-    systemctl start tendermint
+    setup-tendermint "${XP}"
     log seed 0
     trap '' ERR
 
     ##
     # Set up terraform
     ##
-    PREVIOUS_INFRA="$(peek-cache infra || echo '')"
-    export TERRAFORM_RESULT=0
-    # Build a new infra
-    if [ -z "${PREVIOUS_INFRA}" ]; then
-      trap 'log terraform_build 12' ERR
-      if [ -n "${DEV}" ]; then
-        export SSH_KEY="$(tail -1 /etc/experiments/.pool)"
-      else
-        export SSH_KEY="$(tail -1 /home/ec2-user/.ssh/authorized_keys)"
-      fi
-      if [ -f "${XP_DIR}"/config.toml ]; then
-        stemplate /usr/share/terraform-templates --env -f "${XP_DIR}"/config.toml -o /root/terraform-"${XP}" --all
-        if [ -d "${XP_DIR}"/terraform ]; then
-          stemplate "${XP_DIR}"/terraform --env -f "${XP_DIR}"/config.toml -o /root/terraform-"${XP}" --all
-        fi
-      else
-        if [ -d "${XP_DIR}"/terraform ]; then
-          stemplate "${XP_DIR}"/terraform -o /root/terraform-"${XP}" --env -f "${XP_DIR}"/config.toml --all
-        fi
-      fi
-      test -d /root/terraform-"${XP}" || echo "Experiment folder /root/terraform-${XP} not found."
-      test -d /root/terraform-"${XP}" || continue
-      cd /root/terraform-"${XP}"
-      trap 'log terraform_build 11' ERR
-      log terraform_build 2
-      terraform init
-      trap 'log terraform_build 10' ERR
-      log terraform_build 1
-      terraform apply --auto-approve -no-color || export TERRAFORM_RESULT=$?
-    else
-      cd /root/terraform-"${PREVIOUS_INFRA}"
-    fi
+    setup-terraform "${XP}"
 
     ##
-    # Run experiment
+    # Run experiment - if terraform was successful
     ##
-    if [ ${TERRAFORM_RESULT} -ne 0 ]; then
-      log terraform_build 10
-    else
-      if [ -z "${PREVIOUS_INFRA}" ]; then
-        echo "${XP}" > "${CACHE_DIR}/infra" #Keep a record of the infra that is fully built
-      fi
-      log terraform_build 0
+    if [ ${TERRAFORM_RESULT} -eq 0 ]; then
 
       #When DEV=1, the infrastructure needs a kick to start.
       if [ -n "${DEV}" ]; then
-        IP_LIST="$(terraform show ./terraform.tfstate -no-color | grep "^  public_ip =" | sed "s/^  public_ip = //" | tr '\n' ' ')"
-        # Get some time for new infrastructure to come up
-        if [ -z "${PREVIOUS_INFRA}" ]; then
-          echo "Waiting for infrastructure to stabilize in the cloud."
-          sleep 90
-        fi
         # 3 minutes timeout because new servers might still need time
-        pssh -l ec2-user -p 20 -t 180 -i -O "StrictHostKeyChecking no" -O "LogLevel ERROR" -x "-i ${LOG_DIR}/pool.key" -H "${IP_LIST}" "sudo /usr/local/sbin/runxp \"${XP}\""
+        pssh -i -p "${MAX_PARALLEL_SSH}" -t 180 -H "$(get-all-starks-ip) $(get-all-whitewalkers-ip)" "sudo /usr/local/sbin/runxp \"${XP}\""
       fi
 
       # Set up and run tm-load-test master - wait until it finishes
-      if [ -f "${XP_DIR}"/config.toml ]; then
+      if [ -f "${EXPERIMENTS_DIR}/${XP}"/config.toml ]; then
         # We run stemplate twice to allow for double variable interpolation -
         # allows us to refer to variables from within the `config.toml` file too
-        stemplate /usr/local/sbin/tm-load-test-master.bash --env -f "${XP_DIR}"/config.toml -o /tmp
-        stemplate /tmp/tm-load-test-master.bash --env -f "${XP_DIR}"/config.toml -o /home/tm-load-test
+        stemplate /usr/local/sbin/tm-load-test-master.bash --env -f "${EXPERIMENTS_DIR}/${XP}"/config.toml -o /tmp
+        stemplate /tmp/tm-load-test-master.bash --env -f "${EXPERIMENTS_DIR}/${XP}"/config.toml -o /home/tm-load-test
       else
         stemplate /usr/local/sbin/tm-load-test-master.bash --env -o /tmp
         stemplate /tmp/tm-load-test-master.bash --env -o /home/tm-load-test
@@ -167,8 +119,7 @@ do
       # Break down terraform
       trap 'log terraform_destroy 2' ERR
       log terraform_destroy 1
-      terraform destroy --force -no-color
-      rm -f "${CACHE_DIR}/infra"
+      destroy-terraform "${XP}"
       log terraform_destroy 0
     fi
 

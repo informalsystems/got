@@ -25,3 +25,25 @@
 
 - name: Enable startup script at startup
   cron: name=startupjob job=/usr/local/sbin/startup.bash special_time=reboot
+
+- name: Add library.bash light to bashrc
+  copy:
+    dest: /etc/profile.d/library.sh
+    mode: 0755
+    content: |
+      source /usr/local/sbin/library.bash light
+
+- name: Create .ssh for root
+  file: path=/root/.ssh state=directory mode=0700
+
+- name: Add ssh config to root
+  copy:
+    dest: /root/.ssh/config
+    mode: 0600
+    content: |
+      Host *
+        User ec2-user
+        StrictHostKeyChecking no
+        IdentityFile /var/log/nightking/pool.key
+        ServerAliveInterval 120
+        LogLevel ERROR

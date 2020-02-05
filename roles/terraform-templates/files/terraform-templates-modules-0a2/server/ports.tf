@@ -1,5 +1,5 @@
 resource "aws_security_group" "server" {
-  name = "${var.role}${var.id}-ports"
+  name = "${var.role}${var.id}-${var.namestamp}-ports"
   ingress {
     from_port = 26656
     protocol = "tcp"

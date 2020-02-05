@@ -3,13 +3,14 @@
 ##
 # library.bash - a set of reusable bash functions. Usage: `source library.bash`
 ##
-# Optional variable $FAST can be set to avoid importing values that take a long time to look up: DEBUG, DEV, EXPERIMENTS
-
+# Optional variable $FAST can be set to avoid importing values that take a long time to look up: DEBUG, DEV, EXPERIMENTS.
+# Optional input parameter "light" can be set to avoid filling up variables and import only functions.
 
 export LOG_DIR="/var/log/nightking"
 export CACHE_DIR="${LOG_DIR}/cache"
 export FLAG_DIR="${LOG_DIR}/flag"
 export EXPERIMENTS_DIR=/etc/experiments
+export MAX_PARALLEL_SSH=20
 
 #Get meta tags, instance tags
 get() {
@@ -39,6 +40,9 @@ get() {
         ;;
     "influx-telegraf-password" | "influx-admin-password")
         peek-cache "${1}" || get-tag-cached "${1}" "$(random)"
+        ;;
+    "nightking-namestamp")
+        peek-cache "${1}" || get-tag-cached "${1}" "$(random 8)"
         ;;
     "password") #Grafana initial password
         get-tag-cached "${1}" admin
@@ -81,6 +85,9 @@ get() {
     "ca-cert") #Only on nightking, only for terraform preparations
         test -f "${LOG_DIR}/ca.crt" && cat "${LOG_DIR}/ca.crt"
         ;;
+    "infra")
+        peek-cache infra || echo ''
+        ;;
     *)
         echo "get: invalid variable: ${1}"
         false
@@ -88,7 +95,7 @@ get() {
   esac
 }
 
-# Get cache value if exists. If not set errorcode to 1.
+# Get cache value if exists. If not, set errorcode to 1.
 peek-cache() {
   cat "${CACHE_DIR}/${1}" 2> /dev/null
 }
@@ -110,29 +117,29 @@ get-tag() {
 }
 
 # Get AWS EC2 instance tag from cache or from AWS and store it in cache
-# $1 - tag name, $2 - default value
+# $1 - tag name, $2 - (optional) default value
 get-tag-cached() {
   # Set in cache
   if [ ! -f "${CACHE_DIR}/${1}" ]; then
     # Get from AWS
-    get-tag "$@" > "${CACHE_DIR}/${1}"
+    get-tag "${1}" > "${CACHE_DIR}/${1}"
     #Secure it
-    chmod 440 "${CACHE_DIR}/${1}"
+    #chmod 440 "${CACHE_DIR}/${1}"
     #Set default
-    test -n "$(cat "${CACHE_DIR}/${1}")" || echo "${2}" > "${CACHE_DIR}/${1}"
+    test -n "$(cat "${CACHE_DIR}/${1}")" || echo "${2:-}" > "${CACHE_DIR}/${1}"
   fi
   # Get from cache
-  cat "${CACHE_DIR}/${1}"
+  peek-cache "${1}"
 }
 
-#Get a random string
+#Get a random string. Optionally, enter length. (defaults to 32)
 random() {
-  openssl rand -base64 48
+  openssl rand -base64 48 | tr -dc a-zA-Z0-9 | head -c "${1:-32}"
 }
 
 # Log script results to influx DB
 log() {
-  influx -ssl -host nightking.got -username telegraf -password "$(get influx-telegraf-password)" -database telegraf -execute "INSERT $(get role)$(get id) ${1}=${2}"
+  influx -ssl -host nightking.got -username telegraf -password "$(get influx-telegraf-password)" -database telegraf -execute "INSERT $(get role)$(get id) ${1}=${2}" || echo "Logging $1 $2 failed." >> "${LOG_DIR}/error.log"
 }
 
 wait_for_file() {
@@ -160,33 +167,156 @@ set-flag() {
   touch "${FLAG_DIR}/${1}"
 }
 
-# Add a "light" option that does not populate all variables. Useful at startup when not everything can be populated yet.
-if [ "${1:-}" != "light" ]; then
+# Set up tendermint configuration and service.
+# Input parameter: experiment name
+# Todo: collapse setting up Nightking seed node and any other node. Possibly node0 should be the nightking Tendermint node.
+setup-tendermint() {
+  systemctl stop tendermint || true
+  sudo -u tendermint tendermint init
+  sudo -u tendermint tendermint unsafe_reset_all
+  if [ -f "${EXPERIMENTS_DIR}/${1}/genesis.json" ]; then
+    mkdir -p /home/tendermint/.tendermint/config/
+    stemplate "${EXPERIMENTS_DIR}/${1}/genesis.json" -o /home/tendermint/.tendermint/config/ --env -f "${EXPERIMENTS_DIR}/${1}/config.toml"
+  fi
+  if [ $(get role) != "nightking" ]; then
+    if [ -d "${EXPERIMENTS_DIR}/${1}/node" ]; then
+      mkdir -p /home/tendermint/.tendermint/config/
+      stemplate "${EXPERIMENTS_DIR}/${1}/node/" -o /home/tendermint/.tendermint/ --env -f "${EXPERIMENTS_DIR}/${1}/config.toml" --all
+    fi
+    if [ -d "${EXPERIMENTS_DIR}/${1}/node${ID}" ]; then
+      mkdir -p /home/tendermint/.tendermint/config/
+      stemplate "${EXPERIMENTS_DIR}/${1}/node${ID}" -o /home/tendermint/.tendermint/ --env -f "${EXPERIMENTS_DIR}/${1}/config.toml" --all
+    fi
+  else
+    mkdir -p /home/tendermint/.tendermint/config/
+    stemplate "${EXPERIMENTS_DIR}/${1}/seed/" -o /home/tendermint/.tendermint/ --env -f "${EXPERIMENTS_DIR}/${1}/config.toml" --all
+  fi
+  chown -R tendermint.tendermint /home/tendermint/.tendermint
+  sudo -u tendermint tendermint show_node_id > "${LOG_DIR}/node_id"
+  if [ $(get role) == "nightking" ]; then
+    sudo -u tendermint tendermint show_node_id > "${CACHE_DIR}/nightking-seed-node-id"
+    export NIGHTKING_SEED_NODE_ID="$(get nightking-seed-node-id)"
+  fi
+  systemctl start tendermint
+}
+
+# Create terraform infrastructure if it does not exist.
+# Uses 'log' to log into InfluxDB.
+# Changes directory to the terraform infrastructure directory under /root/terraform-<infra>.
+setup-terraform() {
+  export PREVIOUS_INFRA="$(get infra)"
+  export TERRAFORM_RESULT=0
+  # Build a new infra
+  if [ -z "${PREVIOUS_INFRA}" ]; then
+    trap 'log terraform_build 12' ERR
+    if [ -n "${DEV}" ]; then
+      export SSH_KEY="$(tail -1 /etc/experiments/.pool)"
+    else
+      export SSH_KEY="$(tail -1 /home/ec2-user/.ssh/authorized_keys)"
+    fi
+    if [ -f "${EXPERIMENTS_DIR}/${1}"/config.toml ]; then
+      stemplate /usr/share/terraform-templates --env -f "${EXPERIMENTS_DIR}/${1}"/config.toml -o /root/terraform-"${1}" --all
+    fi
+    if [ -d "${EXPERIMENTS_DIR}/${1}"/terraform ]; then
+      stemplate "${EXPERIMENTS_DIR}/${1}"/terraform --env -f "${EXPERIMENTS_DIR}/${1}"/config.toml -o /root/terraform-"${1}" --all
+    fi
+    test -d /root/terraform-"${1}" || echo "Experiment folder /root/terraform-${1} not found."
+    test -d /root/terraform-"${1}" || continue
+    cd /root/terraform-"${1}"
+    trap 'log terraform_build 11' ERR
+    log terraform_build 2
+    terraform init
+    trap 'log terraform_build 10' ERR
+    log terraform_build 1
+    terraform apply --auto-approve -no-color || export TERRAFORM_RESULT=$?
+    if [ ${TERRAFORM_RESULT} -ne 0 ]; then
+      log terraform_build 10
+      if [ -z "${DEV}" ] && [ -z "${DEBUG}" ]; then
+        force-destroy-terraform "${1}"
+      fi
+    else
+      echo "${1}" > "${CACHE_DIR}/infra" #Keep a record of the infra that is fully built
+      export PREVIOUS_INFRA="$(get infra)"
+      log terraform_build 0
+      #When DEV=1, the infrastructure needs to be available before we continue.
+      if [ -n "${DEV}" ]; then
+        echo "Waiting for infrastructure to stabilize in the cloud."
+        sleep 90
+      fi
+    fi
+  else
+    cd /root/terraform-"${PREVIOUS_INFRA}"
+  fi
+}
+
+force-destroy-terraform() {
+  echo "Invoking terraform to destroy infrastructure '${1}'."
+  cd /root/terraform-"${1}"
+  terraform destroy --force
+  rm -f "${CACHE_DIR}/infra"
+}
+
+_get-terraform-ip() {
+    terraform output -state=/root/terraform-"${PREVIOUS_INFRA}"/terraform.tfstate -no-color "${1}"
+}
+
+get-all-starks-ip() {
+  if [ -n "${PREVIOUS_INFRA}" ]; then
+      STARKS_NUM="$(stoml "${EXPERIMENTS_DIR}/${PREVIOUS_INFRA}/config.toml" starks)"
+      IP_LIST=""
+      for i in $(seq 0 $(expr "${STARKS_NUM}" - 1))
+      do
+        IP_LIST="${IP_LIST} $(_get-terraform-ip stark"${i}")"
+      done
+      echo "${IP_LIST## }"
+  fi
+}
+
+get-all-whitewalkers-ip() {
+  if [ -n "${PREVIOUS_INFRA}" ]; then
+      WHITEWALKERS_NUM="$(stoml "${EXPERIMENTS_DIR}/${PREVIOUS_INFRA}/config.toml" whitewalkers)"
+      IP_LIST=""
+      for i in $(seq 0 $(expr "${WHITEWALKERS_NUM}" - 1))
+      do
+        IP_LIST="${IP_LIST} $(_get-terraform-ip whitewalker"${i}")"
+      done
+      echo "${IP_LIST## }"
+  fi
+}
+
+import-vars() {
   ## Game of Tendermint role variable $ROLE is used in this script
   export ROLE="$(get role)"
 
   ## $ROLE-specific variables
   case "${ROLE}" in
     "nightking")
-    # InfluxDB Admin variable
-    export INFLUX_ADMIN_PASSWORD="$(get influx-admin-password)"
-    # Grafana web interface password set in AWS tag
-    export PASSWORD_TAG="$(get password)"
-    # Debug flag set in AWS tag
-    test -n "${FAST:-}" || export DEBUG="$(get debug)"
+      # Debug flag set in AWS tag (slow)
+      test -n "${FAST:-}" || export DEBUG="$(get debug)"
+      # InfluxDB Admin variable
+      export INFLUX_ADMIN_PASSWORD="$(get influx-admin-password)"
+      # Grafana web interface password set in AWS tag
+      export PASSWORD_TAG="$(get password)"
+      # Fully-built terraform infrastructure name - managed by setup-terraform/destroy-terraform scripts
+      export PREVIOUS_INFRA="$(peek-cache infra || echo '')"
+      # Nightking namestamp is used in AWS to distinguish between infrastructure elements created by different nightking nodes
+      export NIGHTKING_NAMESTAMP="$(get nightking-namestamp)"
 
-    # Get AMI owner
-    export AMI_OWNER="$(get ami-owner)"
-    # Get AMI name
-    export AMI_NAME="$(get ami-name)"
+      # Get AMI owner
+      export AMI_OWNER="$(get ami-owner)"
+      # Get AMI name
+      export AMI_NAME="$(get ami-name)"
+
       ;;
     "stark"|"whitewalker")
     export NIGHTKING_SEED_NODE_ID="$(get nightking-seed-node-id)"
   esac
 
   ## Common variables for all servers
-  # DEV flag set in AWS tag
+  # DEV flag set in AWS tag (slow)
   test -n "${FAST:-}" || export DEV="$(get dev)"
+  # Experiments listed in AWS tag (slow)
+  test -n "${FAST:-}" || export EXPERIMENTS="$(get experiments)"
   # Public ip variable
   export PUBLIC_IP="$(get public-ipv4)"
   # Private ip variable
@@ -201,8 +331,6 @@ if [ "${1:-}" != "light" ]; then
   export ID="$(get id)"
   # InfluxDB Telegraf password variable
   export INFLUX_TELEGRAF_PASSWORD="$(get influx-telegraf-password)"
-  # Experiments listed in AWS tag
-  test -n "${FAST:-}" || export EXPERIMENTS="$(get experiments)"
   # Nightking public IP variable
   export NIGHTKING_IP="$(get nightking-ip)"
   # Nightking IP variable
@@ -214,7 +342,16 @@ if [ "${1:-}" != "light" ]; then
   if [ -n "${DEV:-}" ]; then
     export POOL_KEY="$(get pool.key || echo '')"
     export NIGHTKING_HOST_KEY="$(get nightking-host-key)"
-    complete -W "${ROLE} startup tm-load-test" nlog
   fi
+}
 
+##
+# Automatically create and export all variables used by scripts and terraform.
+# The "light" option does not populate all variables. Useful at startup when not everything can be populated yet.
+##
+if [ "${1:-}" != "light" ]; then
+  import-vars
 fi
+
+complete -W "$(get role) startup tm-load-test" nlog
+complete -W "nightking startup tm-load-test tendermint" rlog

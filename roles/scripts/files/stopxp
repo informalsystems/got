@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source /usr/local/sbin/library.bash
+FAST=1 source /usr/local/sbin/library.bash
 
 stop-tm-load-test() {
     PIDS="$(pidof tm-load-test || echo "")"
@@ -14,19 +14,21 @@ stop-tm-load-test() {
 }
 
 stop-tendermint() {
-    systemctl tendermint stop || true
+    systemctl stop tendermint || true
 }
 
 case "${ROLE}" in
   "nightking")
     stop-tm-load-test
-    test -z "${FULL}" || stop-tendermint
+    pssh -i -p "${MAX_PARALLEL_SSH}" -H "$(get-all-whitewalkers-ip)" "sudo /usr/local/sbin/stopxp"
+    test -z "${FULL:-}" || stop-tendermint
+    test -z "${FULL:-}" || pssh -i -p "${MAX_PARALLEL_SSH}" -H "$(get-all-starks-ip)" "sudo FULL=1 /usr/local/sbin/stopxp"
     ;;
   "whitewalker")
     stop-tm-load-test
     ;;
   "stark")
-    test -z "${FULL}" || stop-tendermint
+    test -z "${FULL:-}" || stop-tendermint
     ;;
   *)
     echo "Cannot understand ROLE=${ROLE}" > "${LOG_DIR}/startup-error"

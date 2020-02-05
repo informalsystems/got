@@ -5,8 +5,6 @@
 set -euo pipefail
 FAST=1 source /usr/local/sbin/library.bash
 
-PREVIOUS_INFRA="$(peek-cache infra || echo '')"
-
 confirm() {
   if [ -n "$(which whiptail 2> /dev/null)" ]; then
     whiptail --yesno --defaultno --yes-button Destroy --no-button Cancel --fb --backtitle "destroy-infra" --title "destroy-infra - confirmation" "Press Destroy to delete AWS infrastructure for '${PREVIOUS_INFRA}'." 11 60
@@ -19,10 +17,7 @@ confirm() {
 
 if [ -n "${PREVIOUS_INFRA}" ]; then
   confirm || exit
-  echo "Invoking terraform to destroy infrastructure '${PREVIOUS_INFRA}'."
-  cd /root/terraform-"${PREVIOUS_INFRA}"
-  terraform destroy --force
-  rm -f "${CACHE_DIR}/infra"
+  force-destroy-terraform "${PREVIOUS_INFRA}"
 else
   echo "No infrastructure found. Check /root/terraform-<infra> manually."
 fi

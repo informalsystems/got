@@ -84,3 +84,8 @@ variable ami_name {
   description = "Name of the AMI to launch"
   type = "string"
 }
+
+variable namestamp {
+  description = "Stamp that makes AWS resources unique among multiple Nightkings"
+  type = "string"
+}

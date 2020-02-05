@@ -20,7 +20,7 @@ whitewalkers_zones = ["eu-west-2a"]
 
 # AWS EC2 instance type for Whitewalker and Stark nodes
 # Note: t2.micro is not available in eu-north-1 region
-instance_type = "t3.micro"
+instance_type = "t3.medium"
 
 [tm_load_test]
 # Which broadcast_tx_XXX method to use to send transactions to the network. Can
@@ -76,7 +76,7 @@ endpoint_select_method = "discovered"
 # By way of `endpoint_select_method` and `expect_peers`, we can effectively
 # tell the master to first discover all peers connecting to the Tendermint node
 # running on the same host machine as the master.
-endpoints = "ws://127.0.0.1:26657/websocket"
+endpoints = "ws://nightking.got:26657/websocket"
 
 # `expect_peers` will automatically be configured to be the number of `starks`.
 expect_peers = "{{ .starks }}"

@@ -1,6 +1,6 @@
 {{ range counter .starks }}
 module stark{{.}} {
-  source = "terraform-templates-modules-0a1/server"
+  source = "terraform-templates-modules-0a2/server"
   region = "{{ left (index $.starks_zones .) (sub (len (index $.starks_zones .)) 1) }}"
   availability_zone = "{{ index $.starks_zones . }}"
   ami_owner = "{{ $.AMI_OWNER }}"
@@ -17,5 +17,11 @@ module stark{{.}} {
   dev = "{{ $.DEV }}"
   nightking_host_key = "{{ $.NIGHTKING_HOST_KEY }}"
   user_data_base64_rendered = "${data.template_cloudinit_config.userdata.rendered}"
+  namestamp = "{{ $.NIGHTKING_NAMESTAMP }}"
 }
+
+output "stark{{.}}" {
+  value = "${module.stark{{.}}.public_ip}"
+}
+
 {{end}}

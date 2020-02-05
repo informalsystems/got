@@ -28,14 +28,14 @@ data aws_iam_policy_document "ec2_assume" {
 }
 
 resource "aws_iam_role" "ec2_permissions" {
-  name                  = "${var.role}${var.id}-self-read-role"
+  name                  = "${var.role}${var.id}-${var.namestamp}-self-read-role"
   assume_role_policy    = "${data.aws_iam_policy_document.ec2_assume.json}"
   force_detach_policies = true
 }
 
 resource "aws_iam_policy" "ec2_permissions" {
   policy     = "${data.aws_iam_policy_document.ec2_permissions.json}"
-  name       = "${var.role}${var.id}-self-read-policy"
+  name       = "${var.role}${var.id}-${var.namestamp}-self-read-policy"
 }
 
 resource aws_iam_role_policy_attachment server {

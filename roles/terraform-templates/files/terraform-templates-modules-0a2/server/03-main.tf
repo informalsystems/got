@@ -15,7 +15,7 @@ resource aws_instance server {
     volume_size = "${var.volume_size}"
   }
   tags {
-    Name = "${var.role}${var.id}"
+    Name = "${var.role}${var.id}-${var.namestamp}"
     id = "${var.id}"
     role = "${var.role}"
     nightking-ip = "${var.nightking_public_ip}"

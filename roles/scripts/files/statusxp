@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+FAST=1 source /usr/local/sbin/library.bash
+
+status-tm-load-test() {
+    PIDS="$(pidof tm-load-test || echo "")"
+    if [ -z "${PIDS}" ]; then
+        echo "No pids found for tm-load-test."
+    else
+        echo "tm-load-test PID(s): ${PIDS}"
+    fi
+}
+
+status-tendermint() {
+    systemctl status tendermint
+}
+
+case "${ROLE}" in
+  "nightking")
+    pssh -i -p "${MAX_PARALLEL_SSH}" -H "$(get-all-starks-ip) $(get-all-whitewalkers-ip)" "sudo /usr/local/sbin/statusxp"
+    status-tendermint
+    status-tm-load-test
+    ;;
+  "whitewalker")
+    status-tm-load-test
+    ;;
+  "stark")
+    status-tendermint
+    ;;
+  *)
+    echo "Cannot understand ROLE=${ROLE}" > "${LOG_DIR}/startup-error"
+    ;;
+esac

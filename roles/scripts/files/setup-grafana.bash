@@ -2,9 +2,8 @@
 
 set -euo pipefail
 
-test -f /var/log/nightking/.grafana-setup-finished && exit
-
 source /usr/local/sbin/library.bash
+get-flag grafana-setup-finished
 
 # Enable HTTPS
 sed -i 's/^\(\s\|;\|#\)*protocol\s*=.*$/protocol = https/' /etc/grafana/grafana.ini
@@ -23,7 +22,7 @@ datasources:
   - name: influx
     type: influxdb
     access: proxy
-    url: https://${PUBLIC_HOSTNAME}:8086
+    url: https://nightking.got:8086
     user: telegraf
     password: ${INFLUX_TELEGRAF_PASSWORD}
     database: telegraf
@@ -55,10 +54,10 @@ sleep 3
 
 # Set Home page
 set +e # Debug
-NIGHTKING_ID="$(curl -s -H "Content-Type: application/json" "https://admin:admin@${PUBLIC_HOSTNAME}/api/search?folderIds=0&query=Experiment%20monitor" | jq .[0].id)"
-curl -X PUT -s -H "Content-Type: application/json" "https://admin:admin@${PUBLIC_HOSTNAME}/api/user/preferences" -d "{\"homeDashboardId\":${NIGHTKING_ID}}"
+NIGHTKING_ID="$(curl -s -H "Content-Type: application/json" "https://admin:admin@nightking.got/api/search?folderIds=0&query=Experiment%20monitor" | jq .[0].id)"
+curl -X PUT -s -H "Content-Type: application/json" "https://admin:admin@nightking.got/api/user/preferences" -d "{\"homeDashboardId\":${NIGHTKING_ID}}"
 
-touch /var/log/nightking/.grafana-setup-finished
+set-flag grafana-setup-finished
 log tick 0
 
 # Change web password
@@ -70,7 +69,7 @@ if [ "${PASSWORD_TAG}" == "admin" ]; then
   exit
 else
   pw_data="{\"oldPassword\":\"admin\",\"newPassword\":\"${PASSWORD_TAG}\",\"confirmNew\":\"${PASSWORD_TAG}\"}"
-  PW_RESULT="$(curl -X PUT -H "Content-Type: application/json" -d "${pw_data}" "https://admin:admin@${PUBLIC_HOSTNAME}/api/user/password")"
+  PW_RESULT="$(curl -X PUT -H "Content-Type: application/json" -d "${pw_data}" "https://admin:admin@nightking.got/api/user/password")"
   if [[ "${PW_RESULT}" == "{\"message\":\"New password is too short\"}" ]]; then
     log password 10
     exit

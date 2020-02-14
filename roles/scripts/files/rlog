@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+##
+# rlog [<log_type>] [<number_of_lines_to_print>] - use to gather logs from existing infra
+# Examples:
+#   rlog - print last nightking/whitewalker/stark logs and last tm-load-test logs
+#   rlog startup - print startup logs
+#   rlog runxp - print only last nightking/whitewalker/stark logs
+#   rlog tm-load-test - print only last tm-load-test logs
+#   rlog 30 all - print 30 lines of (all) the last logs
+#   rlog tendermint 25 - print 25 lines of tendermint logs
+#   rlog tendermint -8 -f -s 15 - print 8 lines of tendermint log every 15 seconds (instead of the default 10 lines over 3 seconds).
+##
+set -euo pipefail
+
+FAST=1 source /usr/local/sbin/library.bash
+
+if [ -z "${PREVIOUS_INFRA}" ]; then
+  echo "Could not find infrastructure. Falling back to local logs."
+  nlog $@
+  exit 0
+fi
+
+if [ "${ROLE}" != "nightking" ]; then
+  echo "Falling back to nlog on non-nightking nodes"
+  nlog $@
+  exit 0
+fi
+
+F_FLAG=""
+SLEEP_TIME=3
+TAIL_NUM=10
+TAIL_STARTUP=0
+TAIL_NIGHTKING=1
+TAIL_TM_LOAD_TEST=1
+TAIL_TENDERMINT=0
+SET_CUSTOM_SLEEP_TIME=0
+
+for arg in "$@"
+do
+  case $arg in
+    "-f")
+      F_FLAG="$arg"
+      ;;
+    "-s")
+      SET_CUSTOM_SLEEP_TIME=1
+      continue 2 #Skip resetting SET_CUSTOM_SLEEP_TIME
+      ;;
+    "-n") #Optional, ignored
+      ;;
+    "nightking" | "runxp" | "stark" | "whitewalker")
+      TAIL_STARTUP=0
+      TAIL_NIGHTKING=1
+      TAIL_TM_LOAD_TEST=0
+      TAIL_TENDERMINT=0
+      ;;
+    "tm-load-test")
+      TAIL_STARTUP=0
+      TAIL_NIGHTKING=0
+      TAIL_TM_LOAD_TEST=1
+      TAIL_TENDERMINT=0
+      ;;
+    "startup")
+      TAIL_STARTUP=1
+      TAIL_NIGHTKING=0
+      TAIL_TM_LOAD_TEST=0
+      TAIL_TENDERMINT=0
+      ;;
+    "tendermint")
+      TAIL_STARTUP=0
+      TAIL_NIGHTKING=0
+      TAIL_TM_LOAD_TEST=0
+      TAIL_TENDERMINT=1
+      ;;
+    "all")
+      TAIL_STARTUP=1
+      TAIL_NIGHTKING=1
+      TAIL_TM_LOAD_TEST=1
+      TAIL_TENDERMINT=1
+      ;;
+    *)
+      if [ "${SET_CUSTOM_SLEEP_TIME}" == "1" ]; then
+        if [ "${arg}" -eq "${arg}" ] 2> /dev/null; then
+          SLEEP_TIME="${arg}"
+          SET_CUSTOM_SLEEP_TIME=0
+        else
+          echo "Invalid sleep parameter: ${arg}"
+          exit 1
+        fi
+      else
+        if [ "${arg##-}" -eq "${arg##-}" ] 2> /dev/null; then
+          TAIL_NUM="${arg##-}"
+        else
+          echo "Invalid parameter: ${arg}"
+          exit 1
+        fi
+      fi
+  esac
+  SET_CUSTOM_SLEEP_TIME=0 #Reset
+done
+
+if [ "${F_FLAG}" == "-f" ]; then
+  clear
+  echo "> $0 $@"
+fi
+
+if [ "${TAIL_STARTUP}" -eq 1 ]; then
+  #On nightking
+  tail -vn ${TAIL_NUM} ${LOG_DIR}/startup.output
+
+  #On starks and whitewalkers
+  pssh -p "${MAX_PARALLEL_SSH}" -i -H "$(get-all-starks-ip) $(get-all-whitewalkers-ip)" "tail -vn ${TAIL_NUM} ${LOG_DIR}/startup.output"
+fi
+
+if [ "${TAIL_NIGHTKING}" -eq 1 ]; then
+  #On nightking
+  tail -vn ${TAIL_NUM} ${LOG_DIR}/$(ls -rt ${LOG_DIR} | grep nightking-\.\*\.output$ | tail -1)
+
+  #On starks
+  pssh -p "${MAX_PARALLEL_SSH}" -i -H "$(get-all-starks-ip)" "tail -vn ${TAIL_NUM} ${LOG_DIR}/\$(ls -rt ${LOG_DIR} | grep stark-\.\*\.output$ | tail -1)"
+
+  #On whitewalkers
+  pssh -p "${MAX_PARALLEL_SSH}" -i -H "$(get-all-whitewalkers-ip)" "tail -vn ${TAIL_NUM} ${LOG_DIR}/\$(ls -rt ${LOG_DIR} | grep whitewalker-\.\*\.output$ | tail -1)"
+
+fi
+
+if [ "${TAIL_TM_LOAD_TEST}" -eq 1 ]; then
+  #On nightking
+  tail -vn ${TAIL_NUM} ${LOG_DIR}/$(ls -rt ${LOG_DIR} | grep tm-load-test-\.\*\.output$ | tail -1)
+
+  #On whitewalkers
+  pssh -p "${MAX_PARALLEL_SSH}" -i -H "$(get-all-whitewalkers-ip)" "tail -vn ${TAIL_NUM} ${LOG_DIR}/\$(ls -rt ${LOG_DIR} | grep tm-load-test-\.\*\.output$ | tail -1)"
+fi
+
+if [ "${TAIL_TENDERMINT}" -eq 1 ]; then
+  #On nightking
+  journalctl -u tendermint.service -n ${TAIL_NUM}
+
+  #On starks
+  pssh -p "${MAX_PARALLEL_SSH}" -i -H "$(get-all-starks-ip)" "sudo journalctl -u tendermint.service -n ${TAIL_NUM}"
+fi
+
+if [ "$F_FLAG" == "-f" ]; then
+  sleep "${SLEEP_TIME}"
+  ${0} $@
+fi

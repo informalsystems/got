@@ -34,11 +34,6 @@ variable "id" {
   type = "string"
 }
 
-variable "nightking_hostname" {
-  description = "Nightking hostname"
-  type = "string"
-}
-
 variable "nightking_public_ip" {
   description = "Nightking public IP"
   type = "string"
@@ -59,6 +54,17 @@ variable experiments {
   type = "string"
 }
 
+variable dev {
+  description = "DEV flag"
+  type = "string"
+  default = ""
+}
+
+variable "nightking_host_key" {
+  description = "Nightking SSH host key"
+  type = "string"
+}
+
 variable telegraf {
   description = "Telegraf InfluxDB password"
   type = "string"
@@ -76,5 +82,10 @@ variable ami_owner {
 
 variable ami_name {
   description = "Name of the AMI to launch"
+  type = "string"
+}
+
+variable namestamp {
+  description = "Stamp that makes AWS resources unique among multiple Nightkings"
   type = "string"
 }

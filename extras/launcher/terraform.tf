@@ -68,6 +68,14 @@ resource aws_security_group nightking {
   }
 
   ingress {
+    from_port   = 2222
+    protocol    = "tcp"
+    to_port     = 2222
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "DEV SFTP port"
+  }
+
+  ingress {
     from_port   = 8086
     protocol    = "tcp"
     to_port     = 8086

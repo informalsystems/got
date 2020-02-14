@@ -33,6 +33,7 @@
     - yum-cron
     - ntp
     - leveldb
+    - pssh
     state: latest
     lock_timeout: 180
   notify: enable ntp

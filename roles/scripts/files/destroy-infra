@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+###
+### For developer use
+###
+set -euo pipefail
+FAST=1 source /usr/local/sbin/library.bash
+
+confirm() {
+  if [ -n "$(which whiptail 2> /dev/null)" ]; then
+    whiptail --yesno --defaultno --yes-button Destroy --no-button Cancel --fb --backtitle "destroy-infra" --title "destroy-infra - confirmation" "Press Destroy to delete AWS infrastructure for '${PREVIOUS_INFRA}'." 11 60
+  else
+    read -n 1 -p "Are you sure you want to destroy AWS infrastructure for '${PREVIOUS_INFRA}'? (y/n) " answer
+    echo
+    test "${answer}" == 'y'
+  fi
+}
+
+if [ -n "${PREVIOUS_INFRA}" ]; then
+  confirm || exit
+  force-destroy-terraform "${PREVIOUS_INFRA}"
+else
+  echo "No infrastructure found. Check /root/terraform-<infra> manually."
+fi

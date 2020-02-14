@@ -2,9 +2,9 @@
 
 set -euo pipefail
 
-test -f /var/log/nightking/.influx-setup-finished && exit
 
 source /usr/local/sbin/library.bash
+get-flag influx-setup-finished
 # Do not use the log function here, since influxdb is not set up yet.
 
 systemctl start influxdb
@@ -24,4 +24,4 @@ systemctl enable influxdb
 systemctl start influxdb
 sleep 5
 
-touch /var/log/nightking/.influx-setup-finished
+set-flag influx-setup-finished

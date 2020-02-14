@@ -140,6 +140,8 @@ Note: The list of experiments can be found in the `experiments` folder in the so
 
 Note: You can change this tag in AWS and reboot the server. The new values will be used.
 
+Note: The AMI image can be built with the default setting of not running any experiments. This is for developer use.
+
 #### PASSWORD
 Definition: Grafana `admin` user password. Defaults to `admin` if unset.
 

@@ -15,14 +15,15 @@ resource aws_instance server {
     volume_size = "${var.volume_size}"
   }
   tags {
-    Name = "${var.role}${var.id}"
+    Name = "${var.role}${var.id}-${var.namestamp}"
     id = "${var.id}"
     role = "${var.role}"
-    nightking-hostname = "${var.nightking_hostname}"
     nightking-ip = "${var.nightking_public_ip}"
     nightking-private-ip = "${var.nightking_private_ip}"
-    telegraf = "${var.telegraf}"
+    influx-telegraf-password = "${var.telegraf}"
     nightking-seed-node-id = "${var.nightking_seed_node_id}"
     experiments = "${var.experiments}"
+    dev = "${var.dev}"
+    nightking-host-key = "${var.nightking_host_key}"
   }
 }

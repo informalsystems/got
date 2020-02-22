@@ -15,9 +15,9 @@ confirm() {
   fi
 }
 
-if [ -n "${PREVIOUS_INFRA}" ]; then
+if [ -n "${PREVIOUS_INFRA:-}" ]; then
   confirm || exit
-  force-destroy-terraform "${PREVIOUS_INFRA}"
+  force-destroy-terraform "${PREVIOUS_INFRA:-}"
 else
   echo "No infrastructure found. Check /root/terraform-<infra> manually."
 fi

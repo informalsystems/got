@@ -5,6 +5,15 @@ set -euo pipefail
 source /usr/local/sbin/library.bash
 
 ###
+## DEV=1 setup
+###
+if [ -n "${DEV}" ]; then
+    # Set up DEV sftp and keys even when DEV=1 was set after reboot
+    /usr/local/sbin/setup-pool.bash
+    systemctl start sftpd
+fi
+
+###
 ## Sanitize EXPERIMENT input
 ###
 trap 'log experiment 10' ERR

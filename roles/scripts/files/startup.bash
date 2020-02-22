@@ -27,7 +27,7 @@ if [ -z "$(peek-flag startup-finished)" ]; then
   systemctl enable ntpd
 fi
 
-#Check at every startup - DEV mode settings
+#Check at every startup - DEV mode settings for starks and whitewalkers
 if [ -n "${DEV}" ]; then
   if [ "${ROLE}" == "nightking" ]; then
     /usr/local/sbin/setup-pool.bash
